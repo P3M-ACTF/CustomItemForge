@@ -1,4 +1,4 @@
-"""Accordion details panel grouped by section."""
+"""Flat details panel — all sections visible with wrapped text."""
 
 from __future__ import annotations
 
@@ -7,19 +7,14 @@ from tkinter import ttk
 
 from custom_item_forge.core.model import InspectReport
 from custom_item_forge.i18n import section_title, translate
-from custom_item_forge.ui.components.collapsible_section import CollapsibleSection
-from custom_item_forge.ui.utils.text import format_field_value, is_wide_value
-from custom_item_forge.ui.utils.tooltip import ToolTip
+from custom_item_forge.ui.utils.text import format_field_value
 
 
 class DetailsPanel(ttk.LabelFrame):
-    _LABEL_WIDTH = 22
-
     def __init__(self, master: tk.Misc, *, locale: str = "en") -> None:
         super().__init__(master, text=translate("panel.details", locale), style="Card.TLabelframe")
         self._locale = locale
-        self._sections: dict[str, CollapsibleSection] = {}
-        self._tooltips: list[ToolTip] = []
+        self._wrap_labels: list[ttk.Label] = []
 
         self._canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0)
         self._scrollbar = ttk.Scrollbar(self, orient="vertical", command=self._canvas.yview)
@@ -32,15 +27,6 @@ class DetailsPanel(ttk.LabelFrame):
         self._canvas.bind("<Configure>", self._on_canvas_configure)
         self._bind_mousewheel(self._canvas)
 
-        for index, section_id in enumerate(("vroid", "vroidcustomitem", "file")):
-            section = CollapsibleSection(
-                self._inner,
-                section_title(section_id, locale),
-                expanded=index == 0,
-            )
-            section.pack(fill="x", pady=(0, 4))
-            self._sections[section_id] = section
-
     @property
     def locale(self) -> str:
         return self._locale
@@ -49,48 +35,63 @@ class DetailsPanel(ttk.LabelFrame):
     def locale(self, value: str) -> None:
         self._locale = value
         self.configure(text=translate("panel.details", value))
-        for section_id, widget in self._sections.items():
-            widget.set_title(section_title(section_id, value))
 
     def show_report(self, report: InspectReport | None) -> None:
-        self._tooltips.clear()
-        for section_id, widget in self._sections.items():
-            widget.clear_body()
-            if report is None:
-                continue
-            section = next((item for item in report.sections if item.id == section_id), None)
-            if section is None:
-                continue
-            self._fill_section(widget.body, section.fields)
+        for child in self._inner.winfo_children():
+            child.destroy()
+        self._wrap_labels.clear()
+        if report is None:
+            return
 
-    def _fill_section(self, parent: ttk.Frame, fields: tuple) -> None:
-        parent.columnconfigure(1, weight=1)
-        for row, field in enumerate(fields):
-            label = translate(field.label_key or field.key, self._locale)
-            ttk.Label(parent, text=label, width=self._LABEL_WIDTH, anchor="w").grid(
-                row=row,
-                column=0,
-                sticky="nw",
-                padx=(0, 8),
-                pady=2,
-            )
-            value_text = format_field_value(field.value)
-            if is_wide_value(field.value):
-                value = ttk.Entry(parent)
-                value.insert(0, value_text)
-                value.configure(state="readonly")
-                value.grid(row=row, column=1, sticky="ew", pady=2)
-            else:
-                value = ttk.Label(parent, text=value_text, anchor="w", wraplength=360, justify="left")
-                value.grid(row=row, column=1, sticky="ew", pady=2)
-            if len(value_text) > 48:
-                self._tooltips.append(ToolTip(value, value_text))
+        for index, section in enumerate(report.sections):
+            if index:
+                ttk.Separator(self._inner, orient="horizontal").pack(fill="x", pady=(8, 6))
+            ttk.Label(
+                self._inner,
+                text=section_title(section.id, self._locale).upper(),
+                style="SectionHeader.TLabel",
+            ).pack(anchor="w", pady=(0, 4))
+
+            block = ttk.Frame(self._inner)
+            block.pack(fill="x")
+            block.columnconfigure(1, weight=1)
+
+            for row, field in enumerate(section.fields):
+                label = translate(field.label_key or field.key, self._locale)
+                ttk.Label(block, text=f"{label}:", anchor="nw", style="FieldLabel.TLabel").grid(
+                    row=row,
+                    column=0,
+                    sticky="nw",
+                    padx=(0, 6),
+                    pady=1,
+                )
+                value_text = format_field_value(field.value)
+                value = ttk.Label(
+                    block,
+                    text=value_text,
+                    anchor="nw",
+                    justify="left",
+                    wraplength=160,
+                    style="FieldValue.TLabel",
+                )
+                value.grid(row=row, column=1, sticky="ew", pady=1)
+                self._wrap_labels.append(value)
+
+        self._apply_wrap()
+
+    def _apply_wrap(self) -> None:
+        width = max(120, self._canvas.winfo_width() - 24)
+        for label in self._wrap_labels:
+            label.configure(wraplength=width)
 
     def _on_inner_configure(self, _event: object | None = None) -> None:
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
 
     def _on_canvas_configure(self, event: tk.Event) -> None:
         self._canvas.itemconfigure(self._window_id, width=event.width)
+        width = max(120, event.width - 24)
+        for label in self._wrap_labels:
+            label.configure(wraplength=width)
 
     def _bind_mousewheel(self, widget: tk.Misc) -> None:
         def _scroll(event: tk.Event) -> None:

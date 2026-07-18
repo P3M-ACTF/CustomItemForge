@@ -1,54 +1,53 @@
-"""Inspect tab with three-column layout."""
+"""Right column for Inspect: file browser + flat details."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable
 
 from custom_item_forge.core.errors import ForgeError
+from custom_item_forge.core.model import InspectReport
 from custom_item_forge.i18n import translate
 from custom_item_forge.ops.discover import discover_items
 from custom_item_forge.ops.validate import validate_item
 from custom_item_forge.ui.components.details_panel import DetailsPanel
 from custom_item_forge.ui.components.file_list_panel import FileListPanel
-from custom_item_forge.ui.components.preview_card import PreviewCard
 
 
-class InspectTab(ttk.Frame):
+class InspectSidePanel(ttk.Frame):
     def __init__(
         self,
         master: tk.Misc,
         *,
         locale: str = "en",
+        on_item_loaded: Callable[[Path, InspectReport], None] | None = None,
         log: Callable[[str, str], None] | None = None,
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=6)
+        super().__init__(master)
         self._locale = locale
+        self._on_item_loaded = on_item_loaded
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
         self._run_background = run_background
         self._current_path: Path | None = None
 
-        body = ttk.Panedwindow(self, orient="horizontal")
+        body = ttk.Panedwindow(self, orient="vertical")
         body.pack(fill="both", expand=True)
 
         self.file_list = FileListPanel(
             body,
             locale=locale,
-            on_select=self._inspect_path,
+            on_select=self._on_select_path,
             on_open=self.scan_source,
             on_validate=self.validate_current,
         )
-        self.preview = PreviewCard(body, title_key="tab.inspect", locale=locale, large=True)
         self.details = DetailsPanel(body, locale=locale)
-
-        body.add(self.file_list, weight=1)
-        body.add(self.preview, weight=5)
-        body.add(self.details, weight=2)
+        body.add(self.file_list, weight=2)
+        body.add(self.details, weight=3)
 
     @property
     def locale(self) -> str:
@@ -58,10 +57,19 @@ class InspectTab(ttk.Frame):
     def locale(self, value: str) -> None:
         self._locale = value
         self.file_list.locale = value
-        self.preview.locale = value
         self.details.locale = value
-        if self._current_path:
-            self._inspect_path(self._current_path)
+
+    @property
+    def current_path(self) -> Path | None:
+        return self._current_path
+
+    def apply_report(self, path: Path, report: InspectReport) -> None:
+        self._current_path = path
+        self.details.show_report(report)
+
+    def _on_select_path(self, path: Path) -> None:
+        if self._on_item_loaded:
+            self._on_item_loaded(path)
 
     def scan_source(self) -> None:
         source = self.file_list.source_path().strip()
@@ -91,27 +99,6 @@ class InspectTab(ttk.Frame):
                 finished(action())
             except ForgeError as exc:
                 finished(exc)
-
-    def _inspect_path(self, path: Path) -> None:
-        try:
-            report = self.preview.show(path)
-        except ForgeError as exc:
-            self._log("ERROR", str(exc))
-            self._set_status(translate("status.failed", self._locale))
-            return
-        self._current_path = path
-        self.details.show_report(report)
-        category = report.field_map("vroid").get("category_label", "—")
-        entries = report.field_map("file").get("entry_count", 0)
-        message = translate(
-            "status.inspected",
-            self._locale,
-            name=path.name,
-            category=category,
-            entries=entries,
-        )
-        self._log("INFO", message)
-        self._set_status(message)
 
     def validate_current(self) -> None:
         path = self._current_path or self.file_list.selected_path()

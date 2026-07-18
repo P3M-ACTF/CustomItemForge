@@ -39,7 +39,7 @@ class FileListPanel(ttk.LabelFrame):
         )
         self.validate_btn.pack(side="left", padx=(6, 0))
 
-        self.listbox = tk.Listbox(self, width=28, exportselection=False)
+        self.listbox = tk.Listbox(self, width=18, exportselection=False, font=("Segoe UI", 9))
         self.listbox.pack(fill="both", expand=True)
         self.listbox.bind("<<ListboxSelect>>", self._on_list_select)
 

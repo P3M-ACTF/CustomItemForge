@@ -13,9 +13,8 @@ from custom_item_forge.core.errors import ForgeError, NotCalibratedError
 from custom_item_forge.i18n import translate
 from custom_item_forge.ui.components.app_header import AppHeader
 from custom_item_forge.ui.components.log_view import LogView
-from custom_item_forge.ui.tabs.change_tab import ChangeTab
 from custom_item_forge.ui.tabs.combine_tab import CombineTab
-from custom_item_forge.ui.tabs.inspect_tab import InspectTab
+from custom_item_forge.ui.tabs.inspect_change_workspace import InspectChangeWorkspace
 from custom_item_forge.ui.themes.simple.styles import apply_simple_theme
 
 
@@ -26,6 +25,7 @@ class CustomItemForgeApp:
         self.root = tk.Tk()
         self.locale = "en"
         self._log_visible = False
+        self._active_tab = "inspect"
         apply_simple_theme(self.root)
         self.root.geometry("1180x760")
         self.root.minsize(940, 620)
@@ -41,11 +41,18 @@ class CustomItemForgeApp:
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
 
-        self.header = AppHeader(self.root, locale=self.locale, on_language=self.toggle_language)
+        self.header = AppHeader(
+            self.root,
+            locale=self.locale,
+            on_language=self.toggle_language,
+            on_tab=self._select_tab,
+        )
         self.header.grid(row=0, column=0, sticky="ew")
 
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.grid(row=1, column=0, sticky="nsew", padx=8, pady=(2, 4))
+        self.content = ttk.Frame(self.root, padding=(4, 0, 4, 0))
+        self.content.grid(row=1, column=0, sticky="nsew")
+        self.content.grid_columnconfigure(0, weight=1)
+        self.content.grid_rowconfigure(0, weight=1)
 
         shared = {
             "locale": self.locale,
@@ -53,13 +60,11 @@ class CustomItemForgeApp:
             "set_status": self.set_status,
             "run_background": self.run_background,
         }
-        self.inspect_tab = InspectTab(self.notebook, **shared)
-        self.change_tab = ChangeTab(self.notebook, **shared)
-        self.combine_tab = CombineTab(self.notebook, **shared)
-
-        self.notebook.add(self.inspect_tab, text=translate("tab.inspect", self.locale))
-        self.notebook.add(self.change_tab, text=translate("tab.change", self.locale))
-        self.notebook.add(self.combine_tab, text=translate("tab.combine", self.locale))
+        self.workspace = InspectChangeWorkspace(self.content, **shared)
+        self.combine_tab = CombineTab(self.content, **shared)
+        self.workspace.grid(row=0, column=0, sticky="nsew")
+        self.combine_tab.grid(row=0, column=0, sticky="nsew")
+        self.combine_tab.grid_remove()
 
         self.log_frame = ttk.Frame(self.root, padding=(8, 0, 8, 0))
         self.log_view = LogView(self.log_frame, locale=self.locale, height=self._LOG_HEIGHT)
@@ -86,6 +91,16 @@ class CustomItemForgeApp:
         )
         self.status_label.pack(side="left", fill="x", expand=True)
 
+    def _select_tab(self, tab_id: str) -> None:
+        self._active_tab = tab_id
+        if tab_id == "combine":
+            self.workspace.grid_remove()
+            self.combine_tab.grid()
+        else:
+            self.combine_tab.grid_remove()
+            self.workspace.grid()
+            self.workspace.set_mode(tab_id)
+
     def toggle_log(self) -> None:
         self._log_visible = not self._log_visible
         if self._log_visible:
@@ -111,7 +126,7 @@ class CustomItemForgeApp:
         self.progress.start(8)
         self.set_status(label)
         self.log("START", label)
-        self.notebook.configure(cursor="watch")
+        self.content.configure(cursor="watch")
 
         def worker() -> None:
             try:
@@ -129,7 +144,7 @@ class CustomItemForgeApp:
                 kind, payload, done = self._events.get_nowait()
                 self.progress.stop()
                 self.progress.pack_forget()
-                self.notebook.configure(cursor="")
+                self.content.configure(cursor="")
                 if kind == "ok":
                     if done:
                         done(payload)
@@ -150,11 +165,8 @@ class CustomItemForgeApp:
         self.root.title(translate("app.window_title", self.locale))
         self.header.locale = self.locale
         self.log_view.locale = self.locale
-        self.inspect_tab.locale = self.locale
-        self.change_tab.locale = self.locale
+        self.workspace.locale = self.locale
         self.combine_tab.locale = self.locale
-        for index, key in enumerate(("tab.inspect", "tab.change", "tab.combine")):
-            self.notebook.tab(index, text=translate(key, self.locale))
         self.log_toggle_btn.configure(
             text=translate("menu.log.hide" if self._log_visible else "menu.log.show", self.locale)
         )
