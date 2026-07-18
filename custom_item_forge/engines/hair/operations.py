@@ -227,6 +227,7 @@ def merge_hair_items(
         base=Path(base_path).expanduser().resolve(),
         addon=Path(addon_path).expanduser().resolve(),
         output=written,
+        family="hair",
         base_root_entry=base_root.entry,
         addon_root_entry=addon_root.entry,
         appended_trans_items=stats.hairs,

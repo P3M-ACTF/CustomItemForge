@@ -20,6 +20,20 @@ def test_hair_engine_calibrated() -> None:
     assert report.can_merge is True
 
 
+def test_merge_report_includes_family(tmp_path: Path) -> None:
+    from custom_item_forge.core.model import MergeReport
+
+    report = MergeReport(
+        base=tmp_path / "a.vroidcustomitem",
+        addon=tmp_path / "b.vroidcustomitem",
+        output=tmp_path / "out.vroidcustomitem",
+        family="hair",
+        base_root_entry="group",
+        addon_root_entry="group2",
+    )
+    assert report.family == "hair"
+
+
 def test_hair_engine_still_blocks_cross_family(tmp_path: Path) -> None:
     path = build_minimal_item(tmp_path / "hair.vroidcustomitem")
     engine = HairEngine()
