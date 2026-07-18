@@ -39,8 +39,9 @@ class PreviewCard(ttk.LabelFrame):
         self.image_area = ttk.Frame(self)
         self.image_area.pack(fill="both", expand=True, pady=(0, 4 if large else 6))
         self.image = ttk.Label(self.image_area, text="◇", anchor="center", font=("Segoe UI", 30))
-        self.image.pack(fill="both", expand=True)
+        self.image.place(relx=0.5, rely=0.5, anchor="center")
         self.image_area.bind("<Configure>", self._resize)
+        self.bind("<Configure>", self._resize)
 
         self.name_label = ttk.Label(
             self,
@@ -95,8 +96,16 @@ class PreviewCard(ttk.LabelFrame):
         self._resize_job = None
         if self._png_bytes is None:
             return
-        width = max(80, self.image_area.winfo_width() - 8)
-        height = max(80, self.image_area.winfo_height() - 8)
+        width = max(
+            80,
+            self.image_area.winfo_width() - 8,
+            self.winfo_width() - 16,
+        )
+        height = max(
+            80,
+            self.image_area.winfo_height() - 8,
+            self.winfo_height() - (72 if self.large else 56),
+        )
         size = (width, height)
         if size == self._last_render_size and self.rendered_photo is not None:
             return
@@ -107,6 +116,8 @@ class PreviewCard(ttk.LabelFrame):
         self.rendered_photo = photo
         self._photo_refs.append(photo)
         self.image.configure(image=self.rendered_photo, text="")
+        wrap = max(120, self.winfo_width() - 16)
+        self.name_label.configure(wraplength=wrap)
 
     def show(self, path: str | Path) -> InspectReport:
         resolved = Path(path).expanduser().resolve()

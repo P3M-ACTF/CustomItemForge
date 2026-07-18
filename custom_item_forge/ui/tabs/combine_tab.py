@@ -79,6 +79,7 @@ class CombineTab(ttk.Frame):
         footer.pack(fill="x", pady=(6, 0))
         self.mismatch_label = ttk.Label(footer, text="", style="Warning.TLabel", wraplength=760, justify="left")
         self.mismatch_label.pack(fill="x", pady=(0, 4))
+        footer.bind("<Configure>", lambda _e: self._sync_mismatch_wrap())
         self.confirm_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(footer, text=translate("combine.confirm", locale), variable=self.confirm_var).pack(anchor="w")
         self.merge_btn = ttk.Button(footer, text=translate("combine.merge", locale), command=self.do_merge)
@@ -134,6 +135,10 @@ class CombineTab(ttk.Frame):
         report_inspected(self._log, self._set_status, self._locale, path, report, slot=slot_label)
         return report
 
+    def _sync_mismatch_wrap(self) -> None:
+        width = max(240, self.winfo_width() - 24)
+        self.mismatch_label.configure(wraplength=width)
+
     def _update_mismatch_label(self) -> None:
         if self._base_report is None or self._addon_report is None:
             self.mismatch_label.configure(text="")
@@ -148,7 +153,11 @@ class CombineTab(ttk.Frame):
         if base.get("category_id") != addon.get("category_id"):
             self.mismatch_label.configure(text=translate("combine.mismatch", self._locale))
             return
-        self.mismatch_label.configure(text=translate("compat.awaiting_calibration", self._locale, family=base_family or "hair"))
+        compat = FamilyRouter().compatibility(base.get("category_id"), language=self._locale)
+        self.mismatch_label.configure(
+            text="" if compat.can_merge else compat.merge_reason
+        )
+        self.after_idle(self._sync_mismatch_wrap)
 
     def do_merge(self) -> None:
         base = self.base_picker.get().strip()
@@ -178,6 +187,10 @@ class CombineTab(ttk.Frame):
                 self._log("ERROR", str(payload))
                 self._set_status(translate("status.failed", self._locale))
                 return
+            from custom_item_forge.core.model import MergeReport
+
+            if isinstance(payload, MergeReport):
+                self.result_preview.show(payload.output)
             self._log("INFO", translate("status.done", self._locale))
             self._set_status(translate("status.done", self._locale))
 

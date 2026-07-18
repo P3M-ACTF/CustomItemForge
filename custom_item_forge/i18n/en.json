@@ -100,6 +100,7 @@
   "compat.unknown_category": "Unknown or missing category",
   "compat.cross_family": "Cross-family operations are blocked",
   "compat.awaiting_calibration": "Awaiting calibration samples for {family}",
+  "compat.hair_ready": "Hair recategorize and merge are available for this slot",
   "error.unknown_family": "Unknown family for category: {category}",
   "error.unsupported_family": "Unsupported family: {family}",
   "error.cross_family_recategorize": "Cross-family category changes are unsafe",

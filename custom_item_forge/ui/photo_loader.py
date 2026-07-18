@@ -8,11 +8,19 @@ import tkinter as tk
 
 
 def photo_from_png(png_bytes: bytes, *, max_width: int, max_height: int) -> tk.PhotoImage | None:
+    if max_width < 1 or max_height < 1:
+        return None
     try:
         from PIL import Image, ImageTk
 
         image = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
-        image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        width, height = image.size
+        if width <= 0 or height <= 0:
+            return None
+        scale = min(max_width / width, max_height / height)
+        target = (max(1, int(width * scale)), max(1, int(height * scale)))
+        if target != (width, height):
+            image = image.resize(target, Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(image)
     except ImportError:
         pass

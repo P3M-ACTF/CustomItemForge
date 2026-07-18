@@ -100,6 +100,7 @@
   "compat.unknown_category": "Categoría desconocida o ausente",
   "compat.cross_family": "Operaciones entre familias bloqueadas",
   "compat.awaiting_calibration": "Esperando muestras de calibración para {family}",
+  "compat.hair_ready": "Recategorizar y combinar pelo están disponibles para este slot",
   "error.unknown_family": "Familia desconocida para categoría: {category}",
   "error.unsupported_family": "Familia no soportada: {family}",
   "error.cross_family_recategorize": "Cambiar categoría entre familias no es seguro",

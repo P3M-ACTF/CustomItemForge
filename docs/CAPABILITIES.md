@@ -19,7 +19,7 @@
 
 | Family | Inspect | Recategorize | Merge |
 |---|---|---|---|
-| Hair | Yes | Awaiting calibration | Awaiting calibration |
+| Hair | Yes | Yes (VRoidHairComposer 0.4.x logic) | Yes (same category) |
 | Clothing | Yes | Awaiting calibration | Awaiting calibration |
 | Accessory | Yes | Awaiting calibration | Awaiting calibration |
 | Cross-family | Blocked | Blocked | Blocked |

@@ -65,9 +65,14 @@ class ChangeSidePanel(ttk.LabelFrame):
 
         self.warning = ttk.Label(self, text="", style="Warning.TLabel", wraplength=220, justify="left")
         self.warning.grid(row=6, column=0, sticky="ew", pady=(0, 8))
+        self.bind("<Configure>", lambda _e: self._sync_warning_wrap())
 
         self.create_btn = ttk.Button(self, text=translate("change.create", locale), command=self.do_change)
         self.create_btn.grid(row=7, column=0, sticky="ew")
+
+    def _sync_warning_wrap(self) -> None:
+        width = max(160, self.winfo_width() - 12)
+        self.warning.configure(wraplength=width)
 
     @property
     def locale(self) -> str:
@@ -100,7 +105,11 @@ class ChangeSidePanel(ttk.LabelFrame):
         if family in {"clothing", "accessory"}:
             self.warning.configure(text=translate("change.family_limited", self._locale))
         else:
-            self.warning.configure(text=translate("compat.awaiting_calibration", self._locale, family=family or "hair"))
+            compat = FamilyRouter().compatibility(category_id, language=self._locale)
+            self.warning.configure(
+                text="" if compat.can_recategorize else compat.recategorize_reason
+            )
+        self.after_idle(self._sync_warning_wrap)
 
     def do_change(self) -> None:
         source = self.source_picker.get().strip()

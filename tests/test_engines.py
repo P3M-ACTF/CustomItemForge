@@ -12,12 +12,19 @@ from custom_item_forge.engines.router import FamilyRouter
 from tests.fixtures.synthetic.builder import build_minimal_item
 
 
-def test_hair_engine_not_calibrated(tmp_path: Path) -> None:
+def test_hair_engine_calibrated() -> None:
+    engine = HairEngine()
+    assert engine.calibrated is True
+    report = engine.compatibility("TransferableGroupType.N00.Level1.HairBack", language="en")
+    assert report.can_recategorize is True
+    assert report.can_merge is True
+
+
+def test_hair_engine_still_blocks_cross_family(tmp_path: Path) -> None:
     path = build_minimal_item(tmp_path / "hair.vroidcustomitem")
     engine = HairEngine()
-    assert engine.calibrated is False
-    with pytest.raises(NotCalibratedError):
-        engine.merge(path, path, tmp_path / "out.vroidcustomitem", force=True)
+    with pytest.raises(Exception):
+        engine.recategorize(path, tmp_path / "out.vroidcustomitem", "tops", force=True)
 
 
 def test_router_compatibility_unknown() -> None:
@@ -38,6 +45,13 @@ def test_accessory_engine_stub() -> None:
     report = engine.compatibility("TransferableGroupType.N00.Level1.Glasses", language="en")
     assert report.family == "accessory"
     assert report.calibrated is False
+    with pytest.raises(NotCalibratedError):
+        engine.merge(
+            __import__("pathlib").Path("x"),
+            __import__("pathlib").Path("y"),
+            __import__("pathlib").Path("z"),
+            force=True,
+        )
 
 
 def test_clothing_engine_stub() -> None:

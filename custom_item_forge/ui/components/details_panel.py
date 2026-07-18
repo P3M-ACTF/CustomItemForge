@@ -11,10 +11,15 @@ from custom_item_forge.ui.utils.text import format_field_value
 
 
 class DetailsPanel(ttk.LabelFrame):
+    _LABEL_COLUMN_MIN = 96
+    _LABEL_COLUMN_MAX = 140
+    _LABEL_COLUMN_RATIO = 0.38
+
     def __init__(self, master: tk.Misc, *, locale: str = "en") -> None:
         super().__init__(master, text=translate("panel.details", locale), style="Card.TLabelframe")
         self._locale = locale
         self._wrap_labels: list[ttk.Label] = []
+        self._blocks: list[ttk.Frame] = []
 
         self._canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0)
         self._scrollbar = ttk.Scrollbar(self, orient="vertical", command=self._canvas.yview)
@@ -40,6 +45,7 @@ class DetailsPanel(ttk.LabelFrame):
         for child in self._inner.winfo_children():
             child.destroy()
         self._wrap_labels.clear()
+        self._blocks.clear()
         if report is None:
             return
 
@@ -55,6 +61,7 @@ class DetailsPanel(ttk.LabelFrame):
             block = ttk.Frame(self._inner)
             block.pack(fill="x")
             block.columnconfigure(1, weight=1)
+            self._blocks.append(block)
 
             for row, field in enumerate(section.fields):
                 label = translate(field.label_key or field.key, self._locale)
@@ -62,36 +69,53 @@ class DetailsPanel(ttk.LabelFrame):
                     row=row,
                     column=0,
                     sticky="nw",
-                    padx=(0, 6),
-                    pady=1,
+                    padx=(0, 8),
+                    pady=2,
                 )
-                value_text = format_field_value(field.value)
                 value = ttk.Label(
                     block,
-                    text=value_text,
+                    text=format_field_value(field.value),
                     anchor="nw",
                     justify="left",
-                    wraplength=160,
+                    wraplength=1,
                     style="FieldValue.TLabel",
                 )
-                value.grid(row=row, column=1, sticky="ew", pady=1)
+                value.grid(row=row, column=1, sticky="ew", pady=2)
                 self._wrap_labels.append(value)
 
-        self._apply_wrap()
+        self.after_idle(self._apply_wrap)
+
+    def _label_column_width(self, canvas_width: int) -> int:
+        return max(
+            self._LABEL_COLUMN_MIN,
+            min(self._LABEL_COLUMN_MAX, int(canvas_width * self._LABEL_COLUMN_RATIO)),
+        )
+
+    def _value_wrap_width(self, canvas_width: int) -> int:
+        return max(80, canvas_width - self._label_column_width(canvas_width) - 20)
 
     def _apply_wrap(self) -> None:
-        width = max(120, self._canvas.winfo_width() - 24)
+        width = self._canvas.winfo_width()
+        if width <= 1:
+            return
+        label_width = self._label_column_width(width)
+        value_wrap = self._value_wrap_width(width)
+        for block in self._blocks:
+            block.columnconfigure(0, minsize=label_width)
         for label in self._wrap_labels:
-            label.configure(wraplength=width)
+            label.configure(wraplength=value_wrap)
 
     def _on_inner_configure(self, _event: object | None = None) -> None:
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
 
     def _on_canvas_configure(self, event: tk.Event) -> None:
         self._canvas.itemconfigure(self._window_id, width=event.width)
-        width = max(120, event.width - 24)
+        label_width = self._label_column_width(event.width)
+        value_wrap = self._value_wrap_width(event.width)
+        for block in self._blocks:
+            block.columnconfigure(0, minsize=label_width)
         for label in self._wrap_labels:
-            label.configure(wraplength=width)
+            label.configure(wraplength=value_wrap)
 
     def _bind_mousewheel(self, widget: tk.Misc) -> None:
         def _scroll(event: tk.Event) -> None:
