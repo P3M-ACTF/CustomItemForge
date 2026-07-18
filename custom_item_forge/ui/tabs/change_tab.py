@@ -25,46 +25,47 @@ class ChangeTab(ttk.Frame):
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=12)
+        super().__init__(master, padding=8)
         self._locale = locale
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
         self._run_background = run_background
         self._category_display_map: dict[str, str] = {}
 
-        top = ttk.LabelFrame(self, text=translate("panel.item", locale), style="Card.TLabelframe", padding=8)
-        top.pack(fill="x", pady=(0, 10))
-        ttk.Label(top, text=translate("change.source", locale), width=18).grid(row=0, column=0, sticky="w")
-        self.source_picker = PathPicker(top, locale=locale, browse_mode="file", on_change=self.load_item)
-        self.source_picker.grid(row=0, column=1, sticky="ew", padx=6)
-        top.columnconfigure(1, weight=1)
-        ttk.Button(top, text=translate("menu.browse", locale), command=self.load_item).grid(row=0, column=2)
+        source = ttk.LabelFrame(self, text=translate("panel.item", locale), style="Card.TLabelframe", padding=8)
+        source.pack(fill="x", pady=(0, 8))
+        source.columnconfigure(1, weight=1)
+        ttk.Label(source, text=translate("change.source", locale), width=16).grid(row=0, column=0, sticky="w")
+        self.source_picker = PathPicker(source, locale=locale, browse_mode="file", on_change=self.load_item)
+        self.source_picker.grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
-        body = ttk.Frame(self)
+        body = ttk.Panedwindow(self, orient="horizontal")
         body.pack(fill="both", expand=True)
-        self.preview = PreviewCard(body, title_key="panel.item", locale=locale, large=True)
-        self.preview.pack(side="left", fill="both", expand=True, padx=(0, 12))
+        self.preview = PreviewCard(body, title_key="panel.preview", locale=locale, large=True)
+        controls = ttk.LabelFrame(body, text=translate("panel.details", locale), style="Card.TLabelframe", padding=8)
+        body.add(self.preview, weight=3)
+        body.add(controls, weight=2)
 
-        controls = ttk.Frame(body)
-        controls.pack(side="left", fill="both", expand=True)
-        ttk.Label(controls, text=translate("change.category", locale)).pack(anchor="w")
+        controls.columnconfigure(0, weight=1)
+        ttk.Label(controls, text=translate("change.category", locale)).grid(row=0, column=0, sticky="w")
         self.category_var = tk.StringVar()
         self.category_combo = ttk.Combobox(controls, textvariable=self.category_var, state="readonly")
-        self.category_combo.pack(fill="x", pady=(4, 14))
-        ttk.Label(controls, text=translate("change.output", locale)).pack(anchor="w")
+        self.category_combo.grid(row=1, column=0, sticky="ew", pady=(4, 10))
+        ttk.Label(controls, text=translate("change.output", locale)).grid(row=2, column=0, sticky="w")
         output_row = ttk.Frame(controls)
-        output_row.pack(fill="x", pady=(4, 14))
+        output_row.grid(row=3, column=0, sticky="ew", pady=(4, 10))
+        output_row.columnconfigure(0, weight=1)
         self.output_picker = PathPicker(output_row, locale=locale, browse_mode="file")
-        self.output_picker.pack(side="left", fill="x", expand=True)
+        self.output_picker.grid(row=0, column=0, sticky="ew")
         ttk.Button(
             output_row,
             text=translate("menu.save_as", locale),
             command=lambda: self.output_picker.pick_save_as("changed-item.vroidcustomitem"),
-        ).pack(side="left", padx=(6, 0))
-        self.warning = ttk.Label(controls, text="", style="Warning.TLabel", wraplength=320)
-        self.warning.pack(anchor="w", pady=(0, 8))
+        ).grid(row=0, column=1, padx=(6, 0))
+        self.warning = ttk.Label(controls, text="", style="Warning.TLabel", wraplength=420, justify="left")
+        self.warning.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         self.create_btn = ttk.Button(controls, text=translate("change.create", locale), command=self.do_change)
-        self.create_btn.pack(fill="x")
+        self.create_btn.grid(row=5, column=0, sticky="ew")
 
     @property
     def locale(self) -> str:

@@ -35,7 +35,7 @@ Coloca los archivos en `tests/fixtures/real/` (gitignored).
 
 ## Bundle de release (usuarios finales)
 
-Compila una vez y comprime o copia `dist/` para distribuir:
+Compila una vez en la raíz del proyecto y comprime los archivos de release para distribuir:
 
 ```powershell
 python scripts/build_release.py
@@ -44,11 +44,11 @@ python scripts/build_release.py
 
 | Artefacto | Uso |
 |---|---|
-| `dist/CustomItemForge.pyw` | GUI en Windows — doble clic, sin consola |
-| `dist/CustomItemForge.sh` | GUI en macOS / Linux |
-| `dist/CustomItemForge.pyz` | CLI, o GUI si se ejecuta sin argumentos |
+| `CustomItemForge_Win.pyw` | GUI en Windows — doble clic, sin consola |
+| `CustomItemForge.sh` | GUI en macOS / Linux |
+| `CustomItemForge.pyz` | CLI, o GUI si se ejecuta sin argumentos |
 
-Requiere **Python 3.12+ con Tkinter** en la máquina destino. Consulta [docs/RELEASE.md](docs/RELEASE.md).
+Requiere **Python 3.12+ con Tkinter** en la máquina destino. El build de release incluye Pillow para miniaturas. Consulta [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Licencia
 

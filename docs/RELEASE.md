@@ -1,6 +1,6 @@
 # Release build (users)
 
-End-user artifacts are generated into `dist/` (gitignored). Do not edit files in `dist/` by hand; regenerate with the build script.
+End-user artifacts are generated in the **CustomItemForge project root** (gitignored). Regenerate with the build script; do not edit by hand.
 
 ## Build
 
@@ -11,22 +11,24 @@ python scripts/build_release.py
 .\scripts\build_release.ps1
 ```
 
-## Output
+## Output (project root)
 
 | File | Purpose |
 |---|---|
 | `CustomItemForge.pyz` | App bundle (Python 3.12+). No args → GUI; with args → CLI |
-| `CustomItemForge.pyw` | Windows double-click GUI launcher (no console) |
+| `CustomItemForge_Win.pyw` | Windows double-click GUI launcher (no console) |
 | `CustomItemForge.sh` | macOS/Linux GUI launcher |
-| `README.txt` | Short instructions for users |
+| `RELEASE.txt` | Short instructions for users |
 
 ## Distribute
 
-Zip the contents of `dist/` and share. Users need **Python 3.12+ with Tkinter** installed.
+Zip these four files (plus any future assets) and share. Users need **Python 3.12+ with Tkinter** installed.
 
 ## Development vs release
 
 | Audience | Workflow |
 |---|---|
 | Developers | `pip install -e ".[dev]"` then `custom-item-forge gui` |
-| Users | Copy `dist/` bundle; run `.pyw` / `.sh` or `python CustomItemForge.pyz` |
+| Users | Copy release files; run `CustomItemForge_Win.pyw` / `.sh` or `python CustomItemForge.pyz` |
+
+The release build installs the `[gui]` extra so **Pillow** is bundled for thumbnail previews.

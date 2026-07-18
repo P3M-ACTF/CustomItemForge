@@ -26,7 +26,7 @@ class InspectTab(ttk.Frame):
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=12)
+        super().__init__(master, padding=8)
         self._locale = locale
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
@@ -41,18 +41,14 @@ class InspectTab(ttk.Frame):
             locale=locale,
             on_select=self._inspect_path,
             on_open=self.scan_source,
+            on_validate=self.validate_current,
         )
         self.preview = PreviewCard(body, title_key="tab.inspect", locale=locale, large=True)
         self.details = DetailsPanel(body, locale=locale)
 
         body.add(self.file_list, weight=1)
         body.add(self.preview, weight=2)
-        body.add(self.details, weight=2)
-
-        actions = ttk.Frame(self)
-        actions.pack(fill="x", pady=(10, 0))
-        self.validate_btn = ttk.Button(actions, text=translate("menu.validate", locale), command=self.validate_current)
-        self.validate_btn.pack(side="left")
+        body.add(self.details, weight=3)
 
     @property
     def locale(self) -> str:
@@ -64,7 +60,6 @@ class InspectTab(ttk.Frame):
         self.file_list.locale = value
         self.preview.locale = value
         self.details.locale = value
-        self.validate_btn.configure(text=translate("menu.validate", value))
         if self._current_path:
             self._inspect_path(self._current_path)
 

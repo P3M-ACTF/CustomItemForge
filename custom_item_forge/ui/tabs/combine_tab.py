@@ -25,7 +25,7 @@ class CombineTab(ttk.Frame):
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=12)
+        super().__init__(master, padding=8)
         self._locale = locale
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
@@ -34,7 +34,8 @@ class CombineTab(ttk.Frame):
         self._addon_report: InspectReport | None = None
 
         files = ttk.LabelFrame(self, text=translate("panel.files", locale), style="Card.TLabelframe", padding=8)
-        files.pack(fill="x", pady=(0, 10))
+        files.pack(fill="x", pady=(0, 8))
+        files.columnconfigure(1, weight=1)
         for row, (label_key, attr) in enumerate(
             (
                 ("combine.base", "base_picker"),
@@ -44,31 +45,32 @@ class CombineTab(ttk.Frame):
         ):
             ttk.Label(files, text=translate(label_key, locale), width=12).grid(row=row, column=0, sticky="w")
             picker = PathPicker(files, locale=locale, browse_mode="file", on_change=self.refresh_previews)
-            picker.grid(row=row, column=1, sticky="ew", padx=6)
+            picker.grid(row=row, column=1, sticky="ew", padx=(6, 0))
             setattr(self, attr, picker)
             if attr == "output_picker":
                 ttk.Button(
                     files,
                     text=translate("menu.save_as", locale),
                     command=lambda: self.output_picker.pick_save_as("merged-item.vroidcustomitem"),
-                ).grid(row=row, column=2)
-        files.columnconfigure(1, weight=1)
+                ).grid(row=row, column=2, padx=(6, 0))
 
-        previews = ttk.Frame(self)
+        previews = ttk.Panedwindow(self, orient="horizontal")
         previews.pack(fill="both", expand=True)
         self.base_preview = PreviewCard(previews, title_key="combine.base", locale=locale)
         self.addon_preview = PreviewCard(previews, title_key="combine.addon", locale=locale)
         self.result_preview = PreviewCard(previews, title_key="combine.result", locale=locale)
-        for card in (self.base_preview, self.addon_preview, self.result_preview):
-            card.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        previews.add(self.base_preview, weight=1)
+        previews.add(self.addon_preview, weight=1)
+        previews.add(self.result_preview, weight=1)
 
-        self.mismatch_label = ttk.Label(self, text="", style="Warning.TLabel", wraplength=900)
-        self.mismatch_label.pack(fill="x", pady=(8, 4))
-
+        footer = ttk.Frame(self)
+        footer.pack(fill="x", pady=(8, 0))
+        self.mismatch_label = ttk.Label(footer, text="", style="Warning.TLabel", wraplength=760, justify="left")
+        self.mismatch_label.pack(fill="x", pady=(0, 4))
         self.confirm_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(self, text=translate("combine.confirm", locale), variable=self.confirm_var).pack(anchor="w")
-        self.merge_btn = ttk.Button(self, text=translate("combine.merge", locale), command=self.do_merge)
-        self.merge_btn.pack(fill="x", pady=(8, 0))
+        ttk.Checkbutton(footer, text=translate("combine.confirm", locale), variable=self.confirm_var).pack(anchor="w")
+        self.merge_btn = ttk.Button(footer, text=translate("combine.merge", locale), command=self.do_merge)
+        self.merge_btn.pack(fill="x", pady=(6, 0))
 
     @property
     def locale(self) -> str:

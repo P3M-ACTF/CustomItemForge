@@ -7,6 +7,7 @@ from tkinter import filedialog, ttk
 from typing import Callable
 
 from custom_item_forge.i18n import translate
+from custom_item_forge.ui.utils.tooltip import ToolTip
 
 
 class PathPicker(ttk.Frame):
@@ -23,14 +24,24 @@ class PathPicker(ttk.Frame):
         self._browse_mode = browse_mode
         self._on_change = on_change
         self.variable = tk.StringVar()
-        self.entry = ttk.Entry(self, textvariable=self.variable)
-        self.entry.pack(side="left", fill="x", expand=True)
+        self.variable.trace_add("write", self._maybe_notify)
+        self._tooltip = ToolTip(self, "")
+
+        entry_frame = ttk.Frame(self)
+        entry_frame.pack(side="left", fill="x", expand=True)
+        xscroll = ttk.Scrollbar(entry_frame, orient="horizontal")
+        self.entry = ttk.Entry(entry_frame, textvariable=self.variable, xscrollcommand=xscroll.set)
+        self.entry.pack(side="top", fill="x", expand=True)
+        xscroll.pack(side="bottom", fill="x")
+        xscroll.configure(command=self.entry.xview)
         self.browse_btn = ttk.Button(
             self,
             text=translate("menu.browse", locale),
             command=self._browse,
         )
-        self.browse_btn.pack(side="left", padx=(8, 0))
+        self.browse_btn.pack(side="left", padx=(6, 0))
+        self.entry.bind("<Return>", self._submit)
+        self._update_tooltip()
 
     @property
     def locale(self) -> str:
@@ -46,6 +57,17 @@ class PathPicker(ttk.Frame):
 
     def set(self, value: str) -> None:
         self.variable.set(value)
+        self._update_tooltip()
+
+    def _update_tooltip(self) -> None:
+        self._tooltip.set_text(self.variable.get())
+
+    def _maybe_notify(self, *_args: object) -> None:
+        self._update_tooltip()
+
+    def _submit(self, _event: object | None = None) -> None:
+        if self._on_change:
+            self._on_change()
 
     def _browse(self) -> None:
         selected = None
@@ -94,3 +116,5 @@ class PathPicker(ttk.Frame):
         )
         if selected:
             self.variable.set(selected)
+            if self._on_change:
+                self._on_change()

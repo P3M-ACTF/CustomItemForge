@@ -10,8 +10,11 @@ def apply_simple_theme(root: tk.Misc) -> ttk.Style:
     style = ttk.Style(root)
     if "vista" in style.theme_names():
         style.theme_use("vista")
-    style.configure("Title.TLabel", font=("Segoe UI", 14, "bold"))
-    style.configure("Card.TLabelframe", padding=10)
+    style.configure("Title.TLabel", font=("Segoe UI", 16, "bold"))
+    style.configure("Meta.TLabel", font=("Segoe UI", 9), foreground="#666")
+    style.configure("Card.TLabelframe", padding=8)
+    style.configure("Section.TButton", padding=(2, 0))
+    style.configure("Icon.TButton", padding=(0, 0))
     style.configure("Warning.TLabel", foreground="#9a5700", font=("Segoe UI", 9, "bold"))
-    style.configure("Status.TLabel", padding=(9, 5))
+    style.configure("Status.TLabel", padding=(4, 4))
     return style

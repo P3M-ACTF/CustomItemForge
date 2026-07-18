@@ -1,4 +1,4 @@
-"""Build release artifacts into dist/ for end users."""
+"""Build release artifacts into the CustomItemForge project root."""
 
 from __future__ import annotations
 
@@ -10,9 +10,11 @@ import zipapp
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DIST = ROOT / "dist"
 BUILD = ROOT / "build" / "release"
 PYZ_NAME = "CustomItemForge.pyz"
+PYW_NAME = "CustomItemForge_Win.pyw"
+SH_NAME = "CustomItemForge.sh"
+README_NAME = "RELEASE.txt"
 
 # No CLI args → GUI. With args → CLI (inspect, gui, validate, …).
 MAIN_PY = """\
@@ -36,7 +38,7 @@ if __name__ == "__main__":
         raise SystemExit(_run_cli())
 """
 
-PYW_RELEASE = '''\
+PYW_RELEASE = f'''\
 """CustomItemForge GUI launcher (release). Double-click to open the app."""
 from __future__ import annotations
 
@@ -45,23 +47,23 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PYZ = HERE / "CustomItemForge.pyz"
+PYZ = HERE / "{PYZ_NAME}"
 
 if not PYZ.is_file():
     raise SystemExit(
-        f"Missing {PYZ.name} in {HERE}. Run scripts/build_release.py first."
+        f"Missing {{PYZ.name}} in {{HERE}}. Run scripts/build_release.py first."
     )
 
 os.execv(sys.executable, [sys.executable, str(PYZ)])
 '''
 
-SH_RELEASE = """\
+SH_RELEASE = f"""\
 #!/bin/sh
 # CustomItemForge GUI launcher (release)
 DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-PYZ="$DIR/CustomItemForge.pyz"
+PYZ="$DIR/{PYZ_NAME}"
 if [ ! -f "$PYZ" ]; then
-  echo "Missing CustomItemForge.pyz in $DIR" >&2
+  echo "Missing {PYZ_NAME} in $DIR" >&2
   exit 1
 fi
 if [ "$#" -eq 0 ]; then
@@ -70,7 +72,7 @@ fi
 exec python3 "$PYZ" "$@"
 """
 
-README_RELEASE = """\
+README_RELEASE = f"""\
 CustomItemForge (for VRoid) — release bundle
 ============================================
 
@@ -78,28 +80,45 @@ Requirements: Python 3.12 or newer with Tkinter.
 
 Windows
 -------
-  GUI (no console): double-click CustomItemForge.pyw
-  CLI:              python CustomItemForge.pyz inspect item.vroidcustomitem
-                    python CustomItemForge.pyz gui
+  GUI (no console): double-click {PYW_NAME}
+  CLI:              python {PYZ_NAME} inspect item.vroidcustomitem
+                    python {PYZ_NAME} gui
 
 macOS / Linux
 -------------
-  GUI:  ./CustomItemForge.sh
-  CLI:  python3 CustomItemForge.pyz inspect item.vroidcustomitem
-        python3 CustomItemForge.pyz gui
+  GUI:  ./{SH_NAME}
+  CLI:  python3 {PYZ_NAME} inspect item.vroidcustomitem
+        python3 {PYZ_NAME} gui
 
 Notes
 -----
 - Original .vroidcustomitem files are never modified.
 - Merge and recategorize may be unavailable until calibration samples are provided.
+- Thumbnail previews work best when Pillow is available in the build (included in release).
 """
+
+
+def _safe_rmtree(path: Path) -> None:
+    if not path.exists():
+        return
+
+    def _onexc(_func, target: str, _exc: BaseException) -> None:
+        import os
+        import stat
+
+        os.chmod(target, stat.S_IWRITE)
+        if os.path.isdir(target):
+            shutil.rmtree(target, onexc=_onexc)
+        else:
+            os.remove(target)
+
+    shutil.rmtree(path, onexc=_onexc)
 
 
 def build_pyz(*, clean: bool = True) -> Path:
     if clean and BUILD.exists():
-        shutil.rmtree(BUILD)
+        _safe_rmtree(BUILD)
     BUILD.mkdir(parents=True, exist_ok=True)
-    DIST.mkdir(parents=True, exist_ok=True)
 
     subprocess.run(
         [
@@ -107,7 +126,7 @@ def build_pyz(*, clean: bool = True) -> Path:
             "-m",
             "pip",
             "install",
-            ".",
+            ".[gui]",
             "--target",
             str(BUILD / "site-packages"),
             "--upgrade",
@@ -118,7 +137,7 @@ def build_pyz(*, clean: bool = True) -> Path:
 
     (BUILD / "__main__.py").write_text(MAIN_PY, encoding="utf-8")
 
-    output = DIST / PYZ_NAME
+    output = ROOT / PYZ_NAME
     zipapp.create_archive(
         BUILD,
         target=output,
@@ -131,16 +150,16 @@ def build_pyz(*, clean: bool = True) -> Path:
 def write_launchers() -> list[Path]:
     written: list[Path] = []
 
-    pyw = DIST / "CustomItemForge.pyw"
+    pyw = ROOT / PYW_NAME
     pyw.write_text(PYW_RELEASE, encoding="utf-8")
     written.append(pyw)
 
-    sh = DIST / "CustomItemForge.sh"
+    sh = ROOT / SH_NAME
     sh.write_text(SH_RELEASE, encoding="utf-8", newline="\n")
     sh.chmod(sh.stat().st_mode | 0o111)
     written.append(sh)
 
-    readme = DIST / "README.txt"
+    readme = ROOT / README_NAME
     readme.write_text(README_RELEASE, encoding="utf-8")
     written.append(readme)
 
@@ -163,10 +182,10 @@ def main(argv: list[str] | None = None) -> int:
     for path in launchers:
         print(f"Created {path}")
     print()
-    print("Release folder ready:", DIST)
-    print("  Windows GUI : dist\\CustomItemForge.pyw")
-    print("  Unix GUI    : dist/CustomItemForge.sh")
-    print("  CLI example : python dist\\CustomItemForge.pyz inspect item.vroidcustomitem")
+    print("Release bundle ready in:", ROOT)
+    print(f"  Windows GUI : {PYW_NAME}")
+    print(f"  Unix GUI    : {SH_NAME}")
+    print(f"  CLI example : python {PYZ_NAME} inspect item.vroidcustomitem")
     return 0
 
 

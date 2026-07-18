@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
@@ -10,6 +9,9 @@ from tkinter import ttk
 from custom_item_forge.core.model import InspectReport, ThumbnailState
 from custom_item_forge.i18n import translate
 from custom_item_forge.ops.inspect import inspect_item
+from custom_item_forge.ui.photo_loader import photo_from_png
+from custom_item_forge.ui.thumbnail_display import resolve_display_png
+from custom_item_forge.ui.utils.tooltip import ToolTip
 
 
 class PreviewCard(ttk.LabelFrame):
@@ -26,10 +28,11 @@ class PreviewCard(ttk.LabelFrame):
         self._title_key = title_key
         self.large = large
         self._photo_refs: list[tk.PhotoImage] = []
-        self.original_photo: tk.PhotoImage | None = None
+        self._png_bytes: bytes | None = None
         self.rendered_photo: tk.PhotoImage | None = None
         self.current_path: Path | None = None
         self.current_report: InspectReport | None = None
+        self._used_fallback = False
 
         self.image_area = ttk.Frame(self)
         self.image_area.pack(fill="both", expand=True, pady=(0, 8))
@@ -41,6 +44,7 @@ class PreviewCard(ttk.LabelFrame):
         self.name_label.pack(fill="x")
         self.meta_label = ttk.Label(self, text="", anchor="center", justify="center", foreground="#555")
         self.meta_label.pack(fill="x", pady=(4, 0))
+        self._name_tooltip = ToolTip(self.name_label, "")
 
     @property
     def locale(self) -> str:
@@ -58,25 +62,23 @@ class PreviewCard(ttk.LabelFrame):
     def clear(self) -> None:
         self.current_path = None
         self.current_report = None
-        self.original_photo = None
+        self._png_bytes = None
         self.rendered_photo = None
+        self._used_fallback = False
         self.image.configure(image="", text="◇")
         self.name_label.configure(text=translate("preview.empty", self._locale))
         self.meta_label.configure(text="")
 
     def _resize(self, _event: object | None = None) -> None:
-        if self.original_photo is None:
+        if self._png_bytes is None:
             return
         width = max(80, self.image_area.winfo_width() - 16)
         height = max(80, self.image_area.winfo_height() - 16)
-        factor = max(
-            1,
-            math.ceil(self.original_photo.width() / width),
-            math.ceil(self.original_photo.height() / height),
-        )
-        self.rendered_photo = (
-            self.original_photo.subsample(factor, factor) if factor > 1 else self.original_photo
-        )
+        photo = photo_from_png(self._png_bytes, max_width=width, max_height=height)
+        if photo is None:
+            return
+        self.rendered_photo = photo
+        self._photo_refs.append(photo)
         self.image.configure(image=self.rendered_photo, text="")
 
     def show(self, path: str | Path) -> InspectReport:
@@ -85,16 +87,18 @@ class PreviewCard(ttk.LabelFrame):
         self.current_path = resolved
         self.current_report = report
 
-        if report.thumbnail_state == ThumbnailState.OK and report.thumbnail_bytes:
-            try:
-                self.original_photo = tk.PhotoImage(data=report.thumbnail_bytes)
-                self._photo_refs.append(self.original_photo)
-                self.after_idle(self._resize)
-            except tk.TclError:
-                self.original_photo = None
-                self.image.configure(image="", text="◇")
+        family = report.field_map("vroid").get("family")
+        png_bytes, used_fallback = resolve_display_png(
+            state=report.thumbnail_state,
+            raw_bytes=report.thumbnail_bytes,
+            family=family if isinstance(family, str) else None,
+        )
+        self._png_bytes = png_bytes
+        self._used_fallback = used_fallback
+
+        if png_bytes:
+            self.after_idle(self._resize)
         else:
-            self.original_photo = None
             self.rendered_photo = None
             placeholder = {
                 ThumbnailState.MISSING: translate("thumbnail.missing", self._locale),
@@ -107,8 +111,10 @@ class PreviewCard(ttk.LabelFrame):
         category = vroid.get("category_label", "—")
         size_bytes = file_data.get("size_bytes", 0)
         entries = file_data.get("entry_count", 0)
+        meta = f"{category}\n{size_bytes / 1024:.1f} KiB · {entries} entries"
+        if self._used_fallback:
+            meta += f"\n{translate('thumbnail.fallback', self._locale)}"
         self.name_label.configure(text=resolved.name)
-        self.meta_label.configure(
-            text=f"{category}\n{size_bytes / 1024:.1f} KiB · {entries} entries"
-        )
+        self._name_tooltip.set_text(str(resolved))
+        self.meta_label.configure(text=meta)
         return report

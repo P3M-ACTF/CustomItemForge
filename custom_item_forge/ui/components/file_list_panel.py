@@ -19,21 +19,27 @@ class FileListPanel(ttk.LabelFrame):
         locale: str = "en",
         on_select: Callable[[Path], None] | None = None,
         on_open: Callable[[], None] | None = None,
+        on_validate: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(master, text=translate("panel.files", locale), style="Card.TLabelframe")
         self._locale = locale
         self._on_select = on_select
         self._on_open = on_open
+        self._on_validate = on_validate
         self._paths: list[Path] = []
 
         bar = ttk.Frame(self)
-        bar.pack(fill="x", pady=(0, 8))
-        self.path_picker = PathPicker(bar, locale=locale, browse_mode="folder_or_file")
+        bar.pack(fill="x", pady=(0, 6))
+        self.path_picker = PathPicker(bar, locale=locale, browse_mode="folder_or_file", on_change=self._trigger_open)
         self.path_picker.pack(side="left", fill="x", expand=True)
-        self.open_btn = ttk.Button(bar, text=translate("menu.open", locale), command=self._trigger_open)
-        self.open_btn.pack(side="left", padx=(8, 0))
+        self.validate_btn = ttk.Button(
+            bar,
+            text=translate("menu.validate", locale),
+            command=self._trigger_validate,
+        )
+        self.validate_btn.pack(side="left", padx=(6, 0))
 
-        self.listbox = tk.Listbox(self, width=34, exportselection=False)
+        self.listbox = tk.Listbox(self, width=28, exportselection=False)
         self.listbox.pack(fill="both", expand=True)
         self.listbox.bind("<<ListboxSelect>>", self._on_list_select)
 
@@ -46,7 +52,7 @@ class FileListPanel(ttk.LabelFrame):
         self._locale = value
         self.configure(text=translate("panel.files", value))
         self.path_picker.locale = value
-        self.open_btn.configure(text=translate("menu.open", value))
+        self.validate_btn.configure(text=translate("menu.validate", value))
 
     def source_path(self) -> str:
         return self.path_picker.get()
@@ -69,6 +75,10 @@ class FileListPanel(ttk.LabelFrame):
     def _trigger_open(self) -> None:
         if self._on_open:
             self._on_open()
+
+    def _trigger_validate(self) -> None:
+        if self._on_validate:
+            self._on_validate()
 
     def _on_list_select(self, _event: object | None = None) -> None:
         selection = self.listbox.curselection()

@@ -11,6 +11,7 @@ from typing import Callable
 
 from custom_item_forge.core.errors import ForgeError, NotCalibratedError
 from custom_item_forge.i18n import translate
+from custom_item_forge.ui.components.app_header import AppHeader
 from custom_item_forge.ui.components.log_view import LogView
 from custom_item_forge.ui.tabs.change_tab import ChangeTab
 from custom_item_forge.ui.tabs.combine_tab import CombineTab
@@ -22,9 +23,10 @@ class CustomItemForgeApp:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.locale = "en"
+        self._log_visible = False
         apply_simple_theme(self.root)
-        self.root.geometry("1180x790")
-        self.root.minsize(940, 660)
+        self.root.geometry("1180x760")
+        self.root.minsize(940, 620)
         self.root.title(translate("app.window_title", self.locale))
 
         self.status_var = tk.StringVar(value=translate("status.ready", self.locale))
@@ -34,15 +36,11 @@ class CustomItemForgeApp:
         self.root.after(100, self._poll_events)
 
     def _build_ui(self) -> None:
-        top = ttk.Frame(self.root, padding=(14, 10, 14, 0))
-        top.pack(fill="x")
-        self.title_label = ttk.Label(top, text=translate("app.title", self.locale), style="Title.TLabel")
-        self.title_label.pack(side="left")
-        self.lang_button = ttk.Button(top, text=translate("menu.language.toggle", self.locale), command=self.toggle_language)
-        self.lang_button.pack(side="right")
+        self.header = AppHeader(self.root, locale=self.locale, on_language=self.toggle_language)
+        self.header.pack(fill="x")
 
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=14, pady=10)
+        self.notebook.pack(fill="both", expand=True, padx=8, pady=(4, 6))
 
         shared = {
             "locale": self.locale,
@@ -58,13 +56,36 @@ class CustomItemForgeApp:
         self.notebook.add(self.change_tab, text=translate("tab.change", self.locale))
         self.notebook.add(self.combine_tab, text=translate("tab.combine", self.locale))
 
-        bottom = ttk.Frame(self.root, padding=(14, 0, 14, 10))
-        bottom.pack(fill="both")
+        bottom = ttk.Frame(self.root, padding=(8, 0, 8, 8))
+        bottom.pack(fill="x")
         self.progress = ttk.Progressbar(bottom, mode="indeterminate")
-        self.log_view = LogView(bottom, locale=self.locale, height=7)
-        self.log_view.pack(fill="both", expand=True, pady=(0, 6))
-        self.status_label = ttk.Label(bottom, textvariable=self.status_var, style="Status.TLabel", anchor="w")
-        self.status_label.pack(fill="x")
+        self.log_view = LogView(bottom, locale=self.locale, height=6)
+
+        status_row = ttk.Frame(bottom)
+        status_row.pack(fill="x")
+        self.log_toggle_btn = ttk.Button(
+            status_row,
+            text=translate("menu.log.show", self.locale),
+            width=8,
+            command=self.toggle_log,
+        )
+        self.log_toggle_btn.pack(side="right")
+        self.status_label = ttk.Label(
+            status_row,
+            textvariable=self.status_var,
+            style="Status.TLabel",
+            anchor="w",
+        )
+        self.status_label.pack(side="left", fill="x", expand=True)
+
+    def toggle_log(self) -> None:
+        self._log_visible = not self._log_visible
+        if self._log_visible:
+            self.log_view.pack(fill="both", expand=False, pady=(0, 6), before=self.log_toggle_btn.master)
+            self.log_toggle_btn.configure(text=translate("menu.log.hide", self.locale))
+        else:
+            self.log_view.pack_forget()
+            self.log_toggle_btn.configure(text=translate("menu.log.show", self.locale))
 
     def log(self, level: str, message: str) -> None:
         self.log_view.append(level, message)
@@ -78,7 +99,7 @@ class CustomItemForgeApp:
         action: Callable[[], object],
         done: Callable[[object], None] | None = None,
     ) -> None:
-        self.progress.pack(fill="x", pady=(0, 6))
+        self.progress.pack(fill="x", pady=(0, 6), before=self.log_toggle_btn.master)
         self.progress.start(11)
         self.set_status(label)
         self.log("START", label)
@@ -119,13 +140,16 @@ class CustomItemForgeApp:
     def toggle_language(self) -> None:
         self.locale = "es" if self.locale == "en" else "en"
         self.root.title(translate("app.window_title", self.locale))
-        self.lang_button.configure(text=translate("menu.language.toggle", self.locale))
+        self.header.locale = self.locale
         self.log_view.locale = self.locale
         self.inspect_tab.locale = self.locale
         self.change_tab.locale = self.locale
         self.combine_tab.locale = self.locale
         for index, key in enumerate(("tab.inspect", "tab.change", "tab.combine")):
             self.notebook.tab(index, text=translate(key, self.locale))
+        self.log_toggle_btn.configure(
+            text=translate("menu.log.hide" if self._log_visible else "menu.log.show", self.locale)
+        )
         self.set_status(translate("status.ready", self.locale))
 
     def run(self) -> None:

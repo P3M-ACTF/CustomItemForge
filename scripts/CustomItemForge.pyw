@@ -1,6 +1,6 @@
 """Development GUI launcher — runs from source (not the release bundle).
 
-For end users, build and use dist/CustomItemForge.pyw instead:
+For end users, build and use CustomItemForge_Win.pyw in the project root:
   python scripts/build_release.py
 """
 

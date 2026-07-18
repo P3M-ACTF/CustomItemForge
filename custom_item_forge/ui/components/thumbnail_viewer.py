@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import io
 import tkinter as tk
 from tkinter import ttk
 
 from custom_item_forge.core.model import ThumbnailState
 from custom_item_forge.i18n import translate
+from custom_item_forge.ui.photo_loader import photo_from_png
+from custom_item_forge.ui.thumbnail_display import resolve_display_png
 
 
 class ThumbnailViewer(ttk.Frame):
@@ -34,26 +35,26 @@ class ThumbnailViewer(ttk.Frame):
         state: ThumbnailState,
         *,
         data: bytes | None = None,
+        family: str | None = None,
     ) -> None:
-        self._photo = None
-        if state == ThumbnailState.OK and data:
-            try:
-                self._photo = tk.PhotoImage(data=data)
-                width = self._photo.width()
-                height = self._photo.height()
-                if width > self.PREVIEW_SIZE or height > self.PREVIEW_SIZE:
-                    scale = max(width, height) // self.PREVIEW_SIZE + 1
-                    self._photo = self._photo.subsample(scale, scale)
+        png_bytes, _used_fallback = resolve_display_png(
+            state=state,
+            raw_bytes=data if state is ThumbnailState.OK else None,
+            family=family,
+        )
+        if png_bytes:
+            photo = photo_from_png(png_bytes, max_width=self.PREVIEW_SIZE, max_height=self.PREVIEW_SIZE)
+            if photo is not None:
+                self._photo = photo
                 self._label.configure(image=self._photo, text="")
                 return
-            except tk.TclError:
-                state = ThumbnailState.UNREADABLE
 
         message_key = {
             ThumbnailState.MISSING: "thumbnail.missing",
             ThumbnailState.UNREADABLE: "thumbnail.unreadable",
             ThumbnailState.OK: "thumbnail.unreadable",
         }[state]
+        self._photo = None
         self._label.configure(
             image="",
             text=translate(message_key, self._locale),
