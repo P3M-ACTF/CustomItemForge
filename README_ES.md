@@ -15,7 +15,7 @@ Este proyecto es independiente de la marca VRoid; la compatibilidad se describe 
 - **Motores por familia** (cabello / ropa / accesorio) con stubs honestos hasta recibir muestras de calibración
 - **CLI**: `cif` / `custom-item-forge`
 
-## Inicio rápido
+## Inicio rápido (desarrolladores)
 
 ```powershell
 cd CustomItemForge
@@ -25,19 +25,30 @@ custom-item-forge gui
 pytest
 ```
 
+Durante el desarrollo puedes hacer doble clic en `scripts/CustomItemForge.pyw` (ejecuta desde el código fuente, no el bundle de release).
+
 ## Muestras de calibración
 
 Las operaciones reales de fusión y recategorización requieren fixtures aportados por el usuario. Consulta [docs/CALIBRATION.md](docs/CALIBRATION.md).
 
 Coloca los archivos en `tests/fixtures/real/` (gitignored).
 
-## Empaquetado
+## Bundle de release (usuarios finales)
+
+Compila una vez y comprime o copia `dist/` para distribuir:
 
 ```powershell
-python scripts/build_zipapp.py
+python scripts/build_release.py
+# o: .\scripts\build_release.ps1
 ```
 
-Genera `dist/CustomItemForge.pyz` (zipapp multiplataforma; ejecutar con Python 3.12+).
+| Artefacto | Uso |
+|---|---|
+| `dist/CustomItemForge.pyw` | GUI en Windows — doble clic, sin consola |
+| `dist/CustomItemForge.sh` | GUI en macOS / Linux |
+| `dist/CustomItemForge.pyz` | CLI, o GUI si se ejecuta sin argumentos |
+
+Requiere **Python 3.12+ con Tkinter** en la máquina destino. Consulta [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Licencia
 
