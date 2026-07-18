@@ -7,14 +7,17 @@ import shutil
 import subprocess
 import sys
 import zipapp
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "release"
+DIST = ROOT / "dist"
 PYZ_NAME = "CustomItemForge.pyz"
 PYW_NAME = "CustomItemForge_Win.pyw"
 SH_NAME = "CustomItemForge.sh"
 README_NAME = "RELEASE.txt"
+RELEASE_FILES = (PYZ_NAME, PYW_NAME, SH_NAME, README_NAME)
 
 # No CLI args → GUI. With args → CLI (inspect, gui, validate, …).
 MAIN_PY = """\
@@ -166,12 +169,62 @@ def write_launchers() -> list[Path]:
     return written
 
 
+def _release_label(tag: str | None) -> str:
+    if tag:
+        return tag.removeprefix("refs/tags/").lstrip("v")
+    from custom_item_forge import __version__
+
+    return __version__
+
+
+def pack_zip(*, tag: str | None = None, output_dir: Path | None = None) -> Path:
+    """Pack release artifacts into CustomItemForge-<label>.zip with one root folder."""
+    label = _release_label(tag)
+    folder_name = f"CustomItemForge-{label}"
+    out_dir = output_dir or DIST
+    out_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = out_dir / f"{folder_name}.zip"
+
+    missing = [name for name in RELEASE_FILES if not (ROOT / name).is_file()]
+    if missing:
+        missing_list = ", ".join(missing)
+        raise FileNotFoundError(
+            f"Missing release file(s): {missing_list}. Run build_release.py first."
+        )
+
+    staging = out_dir / folder_name
+    if staging.exists():
+        _safe_rmtree(staging)
+    staging.mkdir(parents=True)
+
+    for name in RELEASE_FILES:
+        shutil.copy2(ROOT / name, staging / name)
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in staging.rglob("*"):
+            if path.is_file():
+                archive.write(path, path.relative_to(out_dir).as_posix())
+
+    _safe_rmtree(staging)
+    return zip_path
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build CustomItemForge release bundle")
     parser.add_argument(
         "--no-clean",
         action="store_true",
         help="Reuse existing build/ release staging folder",
+    )
+    parser.add_argument(
+        "--zip",
+        action="store_true",
+        help="Also create dist/CustomItemForge-<version>.zip for GitHub Releases",
+    )
+    parser.add_argument(
+        "--tag",
+        default=None,
+        help="Release tag for zip name (e.g. v0.1.0-preview). Defaults to package version.",
     )
     args = parser.parse_args(argv)
 
@@ -186,6 +239,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Windows GUI : {PYW_NAME}")
     print(f"  Unix GUI    : {SH_NAME}")
     print(f"  CLI example : python {PYZ_NAME} inspect item.vroidcustomitem")
+
+    if args.zip:
+        zip_path = pack_zip(tag=args.tag)
+        print()
+        print(f"Release zip : {zip_path} ({zip_path.stat().st_size:,} bytes)")
+        print("  Upload this file as a GitHub Release asset, or publish a Release to build it in CI.")
+
     return 0
 
 

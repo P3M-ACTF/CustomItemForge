@@ -1,4 +1,4 @@
-# Build CustomItemForge release bundle into dist/
+# Build CustomItemForge release bundle and optional zip
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -8,5 +8,7 @@ Set-Location $Root
 python scripts/build_release.py @args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host ""
-Write-Host "Tip: zip CustomItemForge.pyz, CustomItemForge_Win.pyw, CustomItemForge.sh and RELEASE.txt for users." -ForegroundColor Cyan
+if ($args -notcontains "--zip") {
+    Write-Host ""
+    Write-Host "Tip: add --zip to create dist/CustomItemForge-<version>.zip for GitHub Releases." -ForegroundColor Cyan
+}
