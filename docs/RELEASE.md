@@ -24,6 +24,16 @@ python scripts/build_release.py
 
 Zip these four files (plus any future assets) and share. Users need **Python 3.12+ with Tkinter** installed.
 
+### GitHub Releases (CI)
+
+Publishing a [GitHub Release](https://github.com/P3M-ACTF/VRoidTools/releases) runs [`.github/workflows/release-custom-item-forge.yml`](../../.github/workflows/release-custom-item-forge.yml), which:
+
+1. Runs `scripts/build_release.py`
+2. Packs the four artifacts into `CustomItemForge-<tag>.zip`
+3. Uploads the zip as a release asset
+
+End users should download that zip from the release page (see the project README).
+
 ## Development vs release
 
 | Audience | Workflow |
