@@ -5,6 +5,8 @@ Part of [VRoidTools](../README.md).
 Tools to inspect and transform `.vroidcustomitem` files **for VRoid Studio**.  
 This project is independent from VRoid branding; compatibility is described as *for VRoid*.
 
+[English](README.md) · [Español](README_ES.md)
+
 ## Features (v0.1.0 foundations)
 
 - **Inspect** with three sections: VRoid / VRoidCustomItem / File
