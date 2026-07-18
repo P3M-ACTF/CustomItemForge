@@ -16,6 +16,54 @@ class HairMergeStats:
     geometry_blocks: int
 
 
+def count_basetransferable_materials(base_transferable_data: bytes) -> int:
+    """Count material records in ``basetransferable.basetransferable``."""
+    try:
+        payload = _bytes(_one(base_transferable_data, 3, "base transferable"), "base payload")
+        store = _bytes(_one(payload, 2, "base payload"), "base material store")
+    except (UnsupportedFormatError, ValueError):
+        return 0
+    return sum(field.number == 1 for field in parse_fields(store))
+
+
+def remap_material_slot_indices(
+    data: bytes,
+    offset: int,
+    *,
+    field_numbers: tuple[int, ...] = (6, 8, 9),
+    min_value: int = 1,
+    max_value: int = 16,
+) -> bytes:
+    """Shift VRoid basetransferable slot indices inside nested hair/material messages."""
+    if offset <= 0:
+        return data
+    try:
+        fields = parse_fields(data)
+    except UnsupportedFormatError:
+        return data
+    chunks: list[bytes] = []
+    for field in fields:
+        if (
+            field.number in field_numbers
+            and field.wire_type == 0
+            and isinstance(field.value, int)
+            and min_value <= field.value <= max_value
+        ):
+            chunks.append(encode_field(field.number, 0, field.value + offset))
+        elif field.wire_type == 2 and isinstance(field.value, bytes):
+            inner = remap_material_slot_indices(
+                field.value,
+                offset,
+                field_numbers=field_numbers,
+                min_value=min_value,
+                max_value=max_value,
+            )
+            chunks.append(encode_field(field.number, 2, inner))
+        else:
+            chunks.append(field.raw)
+    return b"".join(chunks)
+
+
 def merge_base_transferables(base_data: bytes, addon_data: bytes) -> tuple[bytes, int]:
     try:
         base_type = _one(base_data, 2, "base transferable").text()
@@ -155,7 +203,12 @@ def _hair_type(field: WireField) -> int | None:
     )
 
 
-def _merge_hair_store(base_data: bytes, addon_data: bytes) -> tuple[bytes, int, int]:
+def _merge_hair_store(
+    base_data: bytes,
+    addon_data: bytes,
+    *,
+    material_slot_offset: int = 0,
+) -> tuple[bytes, int, int]:
     addon_fields = parse_fields(addon_data)
     hair_fields = [field for field in addon_fields if field.number == 3]
     base_hairs = [field for field in parse_fields(base_data) if field.number == 3]
@@ -174,6 +227,29 @@ def _merge_hair_store(base_data: bytes, addon_data: bytes) -> tuple[bytes, int, 
     passthrough = [field for field in addon_fields if field.number not in (3, 4)]
     if passthrough:
         raise UnsupportedFormatError("Hair store contains unrecognized fields")
+
+    if material_slot_offset > 0:
+        hair_fields = parse_fields(
+            b"".join(
+                encode_field(
+                    3,
+                    2,
+                    remap_material_slot_indices(_bytes(field, "hair strand"), material_slot_offset),
+                )
+                for field in hair_fields
+            )
+        )
+        geometry = parse_fields(
+            b"".join(
+                encode_field(
+                    4,
+                    2,
+                    remap_material_slot_indices(_bytes(field, "geometry"), material_slot_offset),
+                )
+                for field in geometry
+            )
+        )
+
     merged_fields = [*parse_fields(base_data), *hair_fields, *geometry]
     merged_fields.sort(key=lambda field: field.number)
     return b"".join(field.raw for field in merged_fields), len(hair_fields), len(geometry)
@@ -186,6 +262,7 @@ def merge_hair_transferables(
     include_storage: bool = True,
     include_bones: bool = True,
     include_hairs: bool = True,
+    material_slot_offset: int = 0,
 ) -> tuple[bytes, HairMergeStats]:
     base_type = _one(base_data, 2, "base transferable").text()
     addon_type = _one(addon_data, 2, "add-on transferable").text()
@@ -231,7 +308,11 @@ def merge_hair_transferables(
     base_hairs = _bytes(_one(base_hair_data, 2, "base hair data"), "base hairs")
     addon_hairs = _bytes(_one(addon_hair_data, 2, "add-on hair data"), "add-on hairs")
     if include_hairs:
-        merged_hairs, hair_count, geometry_count = _merge_hair_store(base_hairs, addon_hairs)
+        merged_hairs, hair_count, geometry_count = _merge_hair_store(
+            base_hairs,
+            addon_hairs,
+            material_slot_offset=material_slot_offset,
+        )
     else:
         merged_hairs, hair_count, geometry_count = base_hairs, 0, 0
 

@@ -72,3 +72,28 @@ def test_clothing_engine_stub() -> None:
     engine = ClothingEngine()
     report = engine.compatibility("TransferableGroupType.N00.Level1.Tops", language="en")
     assert report.family == "clothing"
+
+
+def test_remap_material_slot_indices_increments_small_varints() -> None:
+    from custom_item_forge.core.protobuf_wire import encode_field, parse_fields
+    from custom_item_forge.engines.hair.merge import remap_material_slot_indices
+
+    payload = encode_field(6, 0, 1) + encode_field(
+        3,
+        2,
+        encode_field(6, 0, 2) + encode_field(8, 0, 1),
+    )
+    remapped = remap_material_slot_indices(payload, 1)
+    top_values = [
+        field.value
+        for field in parse_fields(remapped)
+        if field.number in (6, 8) and isinstance(field.value, int)
+    ]
+    assert top_values == [2]
+    nested = parse_fields(parse_fields(remapped)[1].value)  # type: ignore[arg-type]
+    nested_values = [
+        field.value
+        for field in nested
+        if field.number in (6, 8) and isinstance(field.value, int)
+    ]
+    assert nested_values == [3, 2]
