@@ -20,6 +20,8 @@ from custom_item_forge.ui.themes.simple.styles import apply_simple_theme
 
 
 class CustomItemForgeApp:
+    _LOG_HEIGHT = 5
+
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.locale = "en"
@@ -36,11 +38,14 @@ class CustomItemForgeApp:
         self.root.after(100, self._poll_events)
 
     def _build_ui(self) -> None:
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
+
         self.header = AppHeader(self.root, locale=self.locale, on_language=self.toggle_language)
-        self.header.pack(fill="x")
+        self.header.grid(row=0, column=0, sticky="ew")
 
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=8, pady=(4, 6))
+        self.notebook.grid(row=1, column=0, sticky="nsew", padx=8, pady=(2, 4))
 
         shared = {
             "locale": self.locale,
@@ -56,12 +61,15 @@ class CustomItemForgeApp:
         self.notebook.add(self.change_tab, text=translate("tab.change", self.locale))
         self.notebook.add(self.combine_tab, text=translate("tab.combine", self.locale))
 
-        bottom = ttk.Frame(self.root, padding=(8, 0, 8, 8))
-        bottom.pack(fill="x")
-        self.progress = ttk.Progressbar(bottom, mode="indeterminate")
-        self.log_view = LogView(bottom, locale=self.locale, height=6)
+        self.log_frame = ttk.Frame(self.root, padding=(8, 0, 8, 0))
+        self.log_view = LogView(self.log_frame, locale=self.locale, height=self._LOG_HEIGHT)
+        self.log_view.pack(fill="x")
 
-        status_row = ttk.Frame(bottom)
+        self.bottom = ttk.Frame(self.root, padding=(8, 0, 8, 8))
+        self.bottom.grid(row=3, column=0, sticky="ew")
+        self.progress = ttk.Progressbar(self.bottom, mode="indeterminate")
+
+        status_row = ttk.Frame(self.bottom)
         status_row.pack(fill="x")
         self.log_toggle_btn = ttk.Button(
             status_row,
@@ -81,10 +89,10 @@ class CustomItemForgeApp:
     def toggle_log(self) -> None:
         self._log_visible = not self._log_visible
         if self._log_visible:
-            self.log_view.pack(fill="both", expand=False, pady=(0, 6), before=self.log_toggle_btn.master)
+            self.log_frame.grid(row=2, column=0, sticky="ew")
             self.log_toggle_btn.configure(text=translate("menu.log.hide", self.locale))
         else:
-            self.log_view.pack_forget()
+            self.log_frame.grid_remove()
             self.log_toggle_btn.configure(text=translate("menu.log.show", self.locale))
 
     def log(self, level: str, message: str) -> None:
@@ -99,8 +107,8 @@ class CustomItemForgeApp:
         action: Callable[[], object],
         done: Callable[[object], None] | None = None,
     ) -> None:
-        self.progress.pack(fill="x", pady=(0, 6), before=self.log_toggle_btn.master)
-        self.progress.start(11)
+        self.progress.pack(fill="x", pady=(0, 4), before=self.log_toggle_btn.master)
+        self.progress.start(8)
         self.set_status(label)
         self.log("START", label)
         self.notebook.configure(cursor="watch")

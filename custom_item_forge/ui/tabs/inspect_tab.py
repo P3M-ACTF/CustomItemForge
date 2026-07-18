@@ -26,7 +26,7 @@ class InspectTab(ttk.Frame):
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=8)
+        super().__init__(master, padding=6)
         self._locale = locale
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
@@ -47,8 +47,8 @@ class InspectTab(ttk.Frame):
         self.details = DetailsPanel(body, locale=locale)
 
         body.add(self.file_list, weight=1)
-        body.add(self.preview, weight=2)
-        body.add(self.details, weight=3)
+        body.add(self.preview, weight=5)
+        body.add(self.details, weight=2)
 
     @property
     def locale(self) -> str:

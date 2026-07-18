@@ -41,6 +41,7 @@
   "status.working": "Procesando…",
   "status.scanning": "Explorando origen…",
   "status.inspected": "Inspeccionado {name}: {category}, {entries} entradas",
+  "status.inspected_slot": "{slot}: {name} — {category}, {entries} entradas",
   "status.done": "Operación completada",
   "status.failed": "Operación fallida",
   "dialog.open_title": "Abrir Custom Item",

@@ -20,7 +20,7 @@ class AppHeader(ttk.Frame):
         locale: str = "en",
         on_language: Callable[[], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=(8, 6, 8, 2))
+        super().__init__(master, padding=(8, 4, 8, 2))
         self._locale = locale
         self._on_language = on_language
 

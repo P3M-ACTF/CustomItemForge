@@ -11,6 +11,7 @@ from custom_item_forge.catalog.categories import BY_ID, CATEGORIES
 from custom_item_forge.core.errors import ForgeError, NotCalibratedError
 from custom_item_forge.engines.router import FamilyRouter
 from custom_item_forge.i18n import translate
+from custom_item_forge.ui.utils.activity import report_inspected
 from custom_item_forge.ui.components.path_picker import PathPicker
 from custom_item_forge.ui.components.preview_card import PreviewCard
 
@@ -25,15 +26,15 @@ class ChangeTab(ttk.Frame):
         set_status: Callable[[str], None] | None = None,
         run_background: Callable[[str, Callable[[], object], Callable[[object], None] | None], None] | None = None,
     ) -> None:
-        super().__init__(master, padding=8)
+        super().__init__(master, padding=6)
         self._locale = locale
         self._log = log or (lambda _level, _msg: None)
         self._set_status = set_status or (lambda _msg: None)
         self._run_background = run_background
         self._category_display_map: dict[str, str] = {}
 
-        source = ttk.LabelFrame(self, text=translate("panel.item", locale), style="Card.TLabelframe", padding=8)
-        source.pack(fill="x", pady=(0, 8))
+        source = ttk.LabelFrame(self, text=translate("panel.item", locale), style="Card.TLabelframe", padding=6)
+        source.pack(fill="x", pady=(0, 6))
         source.columnconfigure(1, weight=1)
         ttk.Label(source, text=translate("change.source", locale), width=16).grid(row=0, column=0, sticky="w")
         self.source_picker = PathPicker(source, locale=locale, browse_mode="file", on_change=self.load_item)
@@ -43,7 +44,7 @@ class ChangeTab(ttk.Frame):
         body.pack(fill="both", expand=True)
         self.preview = PreviewCard(body, title_key="panel.preview", locale=locale, large=True)
         controls = ttk.LabelFrame(body, text=translate("panel.details", locale), style="Card.TLabelframe", padding=8)
-        body.add(self.preview, weight=3)
+        body.add(self.preview, weight=5)
         body.add(controls, weight=2)
 
         controls.columnconfigure(0, weight=1)
@@ -86,6 +87,7 @@ class ChangeTab(ttk.Frame):
             report = self.preview.show(source)
         except ForgeError as exc:
             self._log("ERROR", str(exc))
+            self._set_status(translate("status.failed", self._locale))
             return
         family = report.field_map("vroid").get("family")
         choices = [item for item in CATEGORIES if not family or item.family == family]
@@ -98,6 +100,7 @@ class ChangeTab(ttk.Frame):
             self.warning.configure(text=translate("change.family_limited", self._locale))
         else:
             self.warning.configure(text=translate("compat.awaiting_calibration", self._locale, family=family or "hair"))
+        report_inspected(self._log, self._set_status, self._locale, source, report)
 
     def do_change(self) -> None:
         source = self.source_picker.get().strip()
