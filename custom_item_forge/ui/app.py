@@ -2,122 +2,131 @@
 
 from __future__ import annotations
 
+import queue
+import threading
+import traceback
 import tkinter as tk
-from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import messagebox, ttk
+from typing import Callable
 
-from custom_item_forge.core.errors import ForgeError
+from custom_item_forge.core.errors import ForgeError, NotCalibratedError
 from custom_item_forge.i18n import translate
-from custom_item_forge.ops.inspect import inspect_item
-from custom_item_forge.ops.validate import validate_item
-from custom_item_forge.ui.components.inspect_panel import InspectPanel
-from custom_item_forge.ui.components.thumbnail_viewer import ThumbnailViewer
+from custom_item_forge.ui.components.log_view import LogView
+from custom_item_forge.ui.tabs.change_tab import ChangeTab
+from custom_item_forge.ui.tabs.combine_tab import CombineTab
+from custom_item_forge.ui.tabs.inspect_tab import InspectTab
+from custom_item_forge.ui.themes.simple.styles import apply_simple_theme
 
 
 class CustomItemForgeApp:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.locale = "en"
-        self.current_path: Path | None = None
+        apply_simple_theme(self.root)
+        self.root.geometry("1180x790")
+        self.root.minsize(940, 660)
+        self.root.title(translate("app.window_title", self.locale))
+
+        self.status_var = tk.StringVar(value=translate("status.ready", self.locale))
+        self._events: queue.Queue[tuple[str, object, Callable[[object], None] | None]] = queue.Queue()
+
         self._build_ui()
+        self.root.after(100, self._poll_events)
 
     def _build_ui(self) -> None:
-        self.root.title(f"{translate('app.title', self.locale)} — {translate('app.tagline', self.locale)}")
-        self.root.minsize(820, 560)
+        top = ttk.Frame(self.root, padding=(14, 10, 14, 0))
+        top.pack(fill="x")
+        self.title_label = ttk.Label(top, text=translate("app.title", self.locale), style="Title.TLabel")
+        self.title_label.pack(side="left")
+        self.lang_button = ttk.Button(top, text=translate("menu.language.toggle", self.locale), command=self.toggle_language)
+        self.lang_button.pack(side="right")
 
-        toolbar = ttk.Frame(self.root, padding=(8, 8, 8, 4))
-        toolbar.pack(fill="x")
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=14, pady=10)
 
-        ttk.Button(toolbar, text=translate("menu.open", self.locale), command=self.open_file).pack(
-            side="left", padx=(0, 6)
-        )
-        ttk.Button(toolbar, text=translate("menu.validate", self.locale), command=self.validate_file).pack(
-            side="left", padx=(0, 6)
-        )
+        shared = {
+            "locale": self.locale,
+            "log": self.log,
+            "set_status": self.set_status,
+            "run_background": self.run_background,
+        }
+        self.inspect_tab = InspectTab(self.notebook, **shared)
+        self.change_tab = ChangeTab(self.notebook, **shared)
+        self.combine_tab = CombineTab(self.notebook, **shared)
 
-        lang_frame = ttk.Frame(toolbar)
-        lang_frame.pack(side="right")
-        ttk.Label(lang_frame, text=translate("menu.language", self.locale)).pack(side="left", padx=(0, 4))
-        self.lang_var = tk.StringVar(value=self.locale)
-        lang_combo = ttk.Combobox(
-            lang_frame,
-            textvariable=self.lang_var,
-            values=["en", "es"],
-            state="readonly",
-            width=6,
-        )
-        lang_combo.pack(side="left")
-        lang_combo.bind("<<ComboboxSelected>>", self._on_language_change)
+        self.notebook.add(self.inspect_tab, text=translate("tab.inspect", self.locale))
+        self.notebook.add(self.change_tab, text=translate("tab.change", self.locale))
+        self.notebook.add(self.combine_tab, text=translate("tab.combine", self.locale))
 
-        body = ttk.Panedwindow(self.root, orient="horizontal")
-        body.pack(fill="both", expand=True, padx=8, pady=8)
+        bottom = ttk.Frame(self.root, padding=(14, 0, 14, 10))
+        bottom.pack(fill="both")
+        self.progress = ttk.Progressbar(bottom, mode="indeterminate")
+        self.log_view = LogView(bottom, locale=self.locale, height=7)
+        self.log_view.pack(fill="both", expand=True, pady=(0, 6))
+        self.status_label = ttk.Label(bottom, textvariable=self.status_var, style="Status.TLabel", anchor="w")
+        self.status_label.pack(fill="x")
 
-        left = ttk.Frame(body, padding=4)
-        right = ttk.Frame(body, padding=4)
-        body.add(left, weight=0)
-        body.add(right, weight=1)
+    def log(self, level: str, message: str) -> None:
+        self.log_view.append(level, message)
 
-        self.thumbnail = ThumbnailViewer(left, locale=self.locale)
-        self.thumbnail.pack(fill="both", expand=True)
+    def set_status(self, message: str) -> None:
+        self.status_var.set(message.splitlines()[0])
 
-        self.inspect_panel = InspectPanel(right, locale=self.locale)
-        self.inspect_panel.pack(fill="both", expand=True)
+    def run_background(
+        self,
+        label: str,
+        action: Callable[[], object],
+        done: Callable[[object], None] | None = None,
+    ) -> None:
+        self.progress.pack(fill="x", pady=(0, 6))
+        self.progress.start(11)
+        self.set_status(label)
+        self.log("START", label)
+        self.notebook.configure(cursor="watch")
 
-        self.status = ttk.Label(self.root, text=translate("status.ready", self.locale), anchor="w", padding=(8, 4))
-        self.status.pack(fill="x")
+        def worker() -> None:
+            try:
+                result = action()
+                self._events.put(("ok", result, done))
+            except Exception as exc:  # noqa: BLE001
+                details = traceback.format_exc()
+                self._events.put(("error", (exc, details), done))
 
-    def _on_language_change(self, _event: object | None = None) -> None:
-        self.locale = self.lang_var.get()
-        self.root.title(f"{translate('app.title', self.locale)} — {translate('app.tagline', self.locale)}")
-        self.thumbnail.locale = self.locale
-        self.inspect_panel.locale = self.locale
-        if self.current_path:
-            self._load_path(self.current_path)
+        threading.Thread(target=worker, daemon=True).start()
 
-    def open_file(self) -> None:
-        selected = filedialog.askopenfilename(
-            title=translate("dialog.open_title", self.locale),
-            filetypes=[("Custom Item", "*.vroidcustomitem"), ("All files", "*.*")],
-        )
-        if selected:
-            self._load_path(Path(selected))
-
-    def _load_path(self, path: Path) -> None:
+    def _poll_events(self) -> None:
         try:
-            report = inspect_item(path, language=self.locale)
-        except ForgeError as exc:
-            messagebox.showerror(translate("app.title", self.locale), str(exc))
-            self.status.configure(text=translate("status.error", self.locale, message=str(exc)))
-            return
-        except OSError as exc:
-            messagebox.showerror(translate("app.title", self.locale), str(exc))
-            self.status.configure(text=translate("status.error", self.locale, message=str(exc)))
-            return
+            while True:
+                kind, payload, done = self._events.get_nowait()
+                self.progress.stop()
+                self.progress.pack_forget()
+                self.notebook.configure(cursor="")
+                if kind == "ok":
+                    if done:
+                        done(payload)
+                else:
+                    exc, details = payload  # type: ignore[misc]
+                    self.log("ERROR", str(exc))
+                    if not isinstance(exc, ForgeError):
+                        self.log("TRACE", details)
+                    if not isinstance(exc, NotCalibratedError):
+                        messagebox.showerror(translate("status.failed", self.locale), str(exc))
+                self._events.task_done()
+        except queue.Empty:
+            pass
+        self.root.after(100, self._poll_events)
 
-        self.current_path = path
-        self.thumbnail.set_state(report.thumbnail_state, data=report.thumbnail_bytes)
-        self.inspect_panel.show_report(report)
-        self.status.configure(text=translate("status.opened", self.locale, path=path.name))
-
-    def validate_file(self) -> None:
-        if self.current_path is None:
-            self.open_file()
-            if self.current_path is None:
-                return
-        try:
-            report = validate_item(self.current_path)
-        except ForgeError as exc:
-            messagebox.showerror(translate("app.title", self.locale), str(exc))
-            self.status.configure(text=translate("status.error", self.locale, message=str(exc)))
-            return
-
-        if report.valid:
-            self.status.configure(text=translate("status.valid", self.locale))
-            messagebox.showinfo(translate("app.title", self.locale), translate("status.valid", self.locale))
-        else:
-            self.status.configure(text=translate("status.invalid", self.locale))
-            details = "\n".join(issue.message for issue in report.issues if issue.severity != "info")
-            messagebox.showwarning(translate("app.title", self.locale), details or translate("status.invalid", self.locale))
+    def toggle_language(self) -> None:
+        self.locale = "es" if self.locale == "en" else "en"
+        self.root.title(translate("app.window_title", self.locale))
+        self.lang_button.configure(text=translate("menu.language.toggle", self.locale))
+        self.log_view.locale = self.locale
+        self.inspect_tab.locale = self.locale
+        self.change_tab.locale = self.locale
+        self.combine_tab.locale = self.locale
+        for index, key in enumerate(("tab.inspect", "tab.change", "tab.combine")):
+            self.notebook.tab(index, text=translate(key, self.locale))
+        self.set_status(translate("status.ready", self.locale))
 
     def run(self) -> None:
         self.root.mainloop()

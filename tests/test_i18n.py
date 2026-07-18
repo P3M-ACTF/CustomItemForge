@@ -6,7 +6,7 @@ def test_translate_en_default() -> None:
 
 
 def test_translate_es() -> None:
-    assert translate("menu.open", "es") == "Abrir…"
+    assert translate("menu.browse", "es") == "Examinar…"
 
 
 def test_translate_fallback() -> None:
