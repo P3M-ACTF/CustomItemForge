@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "custom-item-forge"
+version = "0.1.0"
+description = "CustomItemForge — inspect and transform .vroidcustomitem files (for VRoid)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "CustomItemForge contributors" }]
+keywords = ["vroid", "custom-item", "3d", "avatar"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Environment :: X11 Applications",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+cif = "custom_item_forge.cli.main:main"
+custom-item-forge = "custom_item_forge.cli.main:main"
+
+[project.gui-scripts]
+custom-item-forge-gui = "custom_item_forge.ui.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["custom_item_forge*"]
+
+[tool.setuptools.package-data]
+custom_item_forge = ["i18n/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
