@@ -76,24 +76,44 @@ def test_clothing_engine_stub() -> None:
 
 def test_remap_material_slot_indices_increments_small_varints() -> None:
     from custom_item_forge.core.protobuf_wire import encode_field, parse_fields
-    from custom_item_forge.engines.hair.merge import remap_material_slot_indices
-
-    payload = encode_field(6, 0, 1) + encode_field(
-        3,
-        2,
-        encode_field(6, 0, 2) + encode_field(8, 0, 1),
+    from custom_item_forge.engines.hair.merge import (
+        HairReferenceMaps,
+        remap_addon_references,
     )
-    remapped = remap_material_slot_indices(payload, 1)
-    top_values = [
-        field.value
+
+    maps = HairReferenceMaps(
+        base_bt_count=1,
+        addon_bt_count=1,
+        bt_slot={1: 2},
+        storage_f1={2: 3},
+        storage_f8={1: 38},
+        storage_f9={1: 1},
+    )
+    geometry = encode_field(8, 0, 1) + encode_field(6, 0, 1)
+    remapped = remap_addon_references(geometry, maps, root="geometry")
+    values = {
+        field.number: field.value
         for field in parse_fields(remapped)
-        if field.number in (6, 8) and isinstance(field.value, int)
-    ]
-    assert top_values == [2]
-    nested = parse_fields(parse_fields(remapped)[1].value)  # type: ignore[arg-type]
-    nested_values = [
+        if field.wire_type == 0 and isinstance(field.value, int)
+    }
+    assert values[8] == 38
+    assert values[6] == 1
+
+    strand = encode_field(6, 0, 1) + encode_field(6, 0, 3)
+    remapped_strand = remap_addon_references(strand, maps, root="strand")
+    strand_values = [
         field.value
-        for field in nested
-        if field.number in (6, 8) and isinstance(field.value, int)
+        for field in parse_fields(remapped_strand)
+        if field.number == 6 and isinstance(field.value, int)
     ]
-    assert nested_values == [3, 2]
+    assert strand_values == [2, 4]
+
+    material_geom = encode_field(
+        5,
+        2,
+        encode_field(3, 2, encode_field(6, 0, 1)),
+    )
+    remapped_mat = remap_addon_references(material_geom, maps, root="geometry")
+    nested = parse_fields(parse_fields(remapped_mat)[0].value)  # type: ignore[arg-type]
+    inner = parse_fields(nested[0].value)  # type: ignore[arg-type]
+    assert inner[0].value == 2

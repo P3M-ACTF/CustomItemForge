@@ -16,6 +16,16 @@ class HairMergeStats:
     geometry_blocks: int
 
 
+@dataclass(frozen=True, slots=True)
+class HairReferenceMaps:
+    base_bt_count: int
+    addon_bt_count: int
+    bt_slot: dict[int, int]
+    storage_f1: dict[int, int]
+    storage_f8: dict[int, int]
+    storage_f9: dict[int, int]
+
+
 def count_basetransferable_materials(base_transferable_data: bytes) -> int:
     """Count material records in ``basetransferable.basetransferable``."""
     try:
@@ -26,42 +36,127 @@ def count_basetransferable_materials(base_transferable_data: bytes) -> int:
     return sum(field.number == 1 for field in parse_fields(store))
 
 
-def remap_material_slot_indices(
-    data: bytes,
-    offset: int,
+def _field_index_map(addon_data: bytes, merged_data: bytes, field_number: int) -> dict[int, int]:
+    def indexed_ids(data: bytes) -> list[str | None]:
+        return [_nested_id(field) for field in parse_fields(data) if field.number == field_number]
+
+    addon_ids = indexed_ids(addon_data)
+    merged_ids = indexed_ids(merged_data)
+    mapping: dict[int, int] = {}
+    for index, identity in enumerate(addon_ids, start=1):
+        if identity and identity in merged_ids:
+            mapping[index] = merged_ids.index(identity) + 1
+    return mapping
+
+
+def build_hair_reference_maps(
     *,
-    field_numbers: tuple[int, ...] = (6, 8, 9),
-    min_value: int = 1,
-    max_value: int = 16,
-) -> bytes:
-    """Shift VRoid basetransferable slot indices inside nested hair/material messages."""
-    if offset <= 0:
-        return data
+    base_bt_data: bytes,
+    addon_bt_data: bytes,
+    base_storage: bytes,
+    addon_storage: bytes,
+    merged_storage: bytes,
+) -> HairReferenceMaps:
+    base_bt_count = count_basetransferable_materials(base_bt_data)
+    addon_bt_count = count_basetransferable_materials(addon_bt_data)
+    bt_slot = {slot: slot + base_bt_count for slot in range(1, addon_bt_count + 1)}
+    return HairReferenceMaps(
+        base_bt_count=base_bt_count,
+        addon_bt_count=addon_bt_count,
+        bt_slot=bt_slot,
+        storage_f1=_field_index_map(addon_storage, merged_storage, 1),
+        storage_f8=_field_index_map(addon_storage, merged_storage, 8),
+        storage_f9=_field_index_map(addon_storage, merged_storage, 9),
+    )
+
+
+def _child_remap_context(context: dict[str, bool], field_number: int) -> dict[str, bool]:
+    child = dict(context)
+    if context.get("hair_strand"):
+        if field_number == 4:
+            child["geometry"] = True
+        if child.get("geometry"):
+            if field_number == 5:
+                child["material_wrapper"] = True
+            if field_number == 3 and child.get("material_wrapper"):
+                child["geometry_material"] = True
+            if field_number == 1 and child.get("material_wrapper"):
+                child["geometry_material"] = True
+        return child
+    if context.get("geometry"):
+        if field_number == 5:
+            child["material_wrapper"] = True
+        if field_number == 3 and context.get("material_wrapper"):
+            child["geometry_material"] = True
+        if field_number == 1 and context.get("material_wrapper"):
+            child["geometry_material"] = True
+        return child
+    if field_number == 3:
+        child["hair_strand"] = True
+    elif field_number == 4:
+        child["geometry"] = True
+    return child
+
+
+def _remap_varint(
+    field_number: int,
+    value: int,
+    maps: HairReferenceMaps,
+    context: dict[str, bool],
+) -> int:
+    if field_number == 8 and context.get("geometry"):
+        return maps.storage_f8.get(value, value)
+    if field_number == 9 and context.get("geometry"):
+        return maps.storage_f9.get(value, value)
+    if field_number != 6:
+        return value
+    if context.get("geometry_material"):
+        return maps.bt_slot.get(value, value + maps.base_bt_count)
+    if context.get("geometry"):
+        return value
+    if context.get("hair_strand"):
+        if value <= maps.addon_bt_count:
+            return maps.bt_slot.get(value, value + maps.base_bt_count)
+        storage_slot = value - maps.addon_bt_count
+        merged_storage = maps.storage_f1.get(storage_slot, storage_slot)
+        return maps.base_bt_count + merged_storage
+    return value
+
+
+def remap_addon_references(data: bytes, maps: HairReferenceMaps, *, root: str) -> bytes:
+    """Remap add-on numeric material/texture indices after storage merge."""
+    context: dict[str, bool] = {"hair_strand": root == "strand", "geometry": root == "geometry"}
+    return _remap_nested(data, maps, context)
+
+
+def _merge_base_payload_f5(base_payload: bytes, addon_payload: bytes) -> bytes:
     try:
-        fields = parse_fields(data)
-    except UnsupportedFormatError:
-        return data
-    chunks: list[bytes] = []
-    for field in fields:
-        if (
-            field.number in field_numbers
-            and field.wire_type == 0
-            and isinstance(field.value, int)
-            and min_value <= field.value <= max_value
-        ):
-            chunks.append(encode_field(field.number, 0, field.value + offset))
-        elif field.wire_type == 2 and isinstance(field.value, bytes):
-            inner = remap_material_slot_indices(
-                field.value,
-                offset,
-                field_numbers=field_numbers,
-                min_value=min_value,
-                max_value=max_value,
-            )
-            chunks.append(encode_field(field.number, 2, inner))
-        else:
-            chunks.append(field.raw)
-    return b"".join(chunks)
+        base_f5 = _bytes([field for field in parse_fields(base_payload) if field.number == 5][0], "base f5")
+        addon_f5 = _bytes([field for field in parse_fields(addon_payload) if field.number == 5][0], "addon f5")
+    except (UnsupportedFormatError, IndexError):
+        return base_payload
+
+    base_fields = parse_fields(base_f5)
+    addon_fields = parse_fields(addon_f5)
+    seen_f9: set[str] = set()
+    merged_f5_parts: list[bytes] = []
+    for field in base_fields:
+        merged_f5_parts.append(field.raw)
+        if field.number == 9 and field.wire_type == 2:
+            identity = _nested_id(field)
+            if identity:
+                seen_f9.add(identity)
+    for field in addon_fields:
+        if field.number != 9:
+            continue
+        identity = _nested_id(field)
+        if identity and identity in seen_f9:
+            continue
+        merged_f5_parts.append(field.raw)
+        if identity:
+            seen_f9.add(identity)
+    merged_f5 = b"".join(merged_f5_parts)
+    return _replace_one(base_payload, 5, merged_f5, "base payload f5")
 
 
 def merge_base_transferables(base_data: bytes, addon_data: bytes) -> tuple[bytes, int]:
@@ -84,8 +179,31 @@ def merge_base_transferables(base_data: bytes, addon_data: bytes) -> tuple[bytes
         label="common material and texture store",
     )
     merged_payload = _replace_one(base_payload, 2, merged_store, "base payload")
+    merged_payload = _merge_base_payload_f5(merged_payload, addon_payload)
     merged = _replace_one(base_data, 3, merged_payload, "base transferable")
     return merged, sum(counts.values())
+
+
+def _remap_nested(data: bytes, maps: HairReferenceMaps, context: dict[str, bool]) -> bytes:
+    try:
+        fields = parse_fields(data)
+    except UnsupportedFormatError:
+        return data
+    chunks: list[bytes] = []
+    for field in fields:
+        if field.wire_type == 0 and isinstance(field.value, int):
+            remapped = _remap_varint(field.number, field.value, maps, context)
+            if remapped != field.value:
+                chunks.append(encode_field(field.number, 0, remapped))
+            else:
+                chunks.append(field.raw)
+        elif field.wire_type == 2 and isinstance(field.value, bytes):
+            child = _child_remap_context(context, field.number)
+            inner = _remap_nested(field.value, maps, child)
+            chunks.append(encode_field(field.number, 2, inner))
+        else:
+            chunks.append(field.raw)
+    return b"".join(chunks)
 
 
 def hair_transferable_counts(data: bytes) -> tuple[int, int, int]:
@@ -207,7 +325,7 @@ def _merge_hair_store(
     base_data: bytes,
     addon_data: bytes,
     *,
-    material_slot_offset: int = 0,
+    reference_maps: HairReferenceMaps | None = None,
 ) -> tuple[bytes, int, int]:
     addon_fields = parse_fields(addon_data)
     hair_fields = [field for field in addon_fields if field.number == 3]
@@ -228,13 +346,13 @@ def _merge_hair_store(
     if passthrough:
         raise UnsupportedFormatError("Hair store contains unrecognized fields")
 
-    if material_slot_offset > 0:
+    if reference_maps is not None:
         hair_fields = parse_fields(
             b"".join(
                 encode_field(
                     3,
                     2,
-                    remap_material_slot_indices(_bytes(field, "hair strand"), material_slot_offset),
+                    remap_addon_references(_bytes(field, "hair strand"), reference_maps, root="strand"),
                 )
                 for field in hair_fields
             )
@@ -244,7 +362,7 @@ def _merge_hair_store(
                 encode_field(
                     4,
                     2,
-                    remap_material_slot_indices(_bytes(field, "geometry"), material_slot_offset),
+                    remap_addon_references(_bytes(field, "geometry"), reference_maps, root="geometry"),
                 )
                 for field in geometry
             )
@@ -262,7 +380,8 @@ def merge_hair_transferables(
     include_storage: bool = True,
     include_bones: bool = True,
     include_hairs: bool = True,
-    material_slot_offset: int = 0,
+    base_bt_data: bytes | None = None,
+    addon_bt_data: bytes | None = None,
 ) -> tuple[bytes, HairMergeStats]:
     base_type = _one(base_data, 2, "base transferable").text()
     addon_type = _one(addon_data, 2, "add-on transferable").text()
@@ -291,6 +410,16 @@ def merge_hair_transferables(
     else:
         merged_storage, storage_counts = base_storage, {}
 
+    reference_maps: HairReferenceMaps | None = None
+    if include_hairs and base_bt_data is not None and addon_bt_data is not None:
+        reference_maps = build_hair_reference_maps(
+            base_bt_data=base_bt_data,
+            addon_bt_data=addon_bt_data,
+            base_storage=base_storage,
+            addon_storage=addon_storage,
+            merged_storage=merged_storage,
+        )
+
     base_hair_data = _bytes(_one(base_payload, 4, "base payload"), "base hair data")
     addon_hair_data = _bytes(_one(addon_payload, 4, "add-on payload"), "add-on hair data")
     base_bones = _bytes(_one(base_hair_data, 1, "base hair data"), "base Hair Bounce")
@@ -311,7 +440,7 @@ def merge_hair_transferables(
         merged_hairs, hair_count, geometry_count = _merge_hair_store(
             base_hairs,
             addon_hairs,
-            material_slot_offset=material_slot_offset,
+            reference_maps=reference_maps,
         )
     else:
         merged_hairs, hair_count, geometry_count = base_hairs, 0, 0

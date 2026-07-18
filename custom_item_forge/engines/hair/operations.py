@@ -10,6 +10,7 @@ from custom_item_forge.core.archive import (
     BASE_OWNED_ENTRIES,
     BASE_TRANSFERABLE_PATH,
     META_PATH,
+    THUMBNAIL_PATH,
     CustomItemArchive,
     ensure_safe_output,
     sha256_file,
@@ -19,8 +20,8 @@ from custom_item_forge.core.errors import CollisionError, InvalidArchiveError, U
 from custom_item_forge.core.model import MergeReport
 from custom_item_forge.core.probe import select_root_group
 from custom_item_forge.core.protobuf_wire import encode_text, parse_fields
+from custom_item_forge.core.thumbnail_compose import compose_merge_thumbnail
 from custom_item_forge.engines.hair.merge import (
-    count_basetransferable_materials,
     hair_transferable_counts,
     hair_transferable_has_canonical_order,
     merge_base_transferables,
@@ -160,20 +161,33 @@ def merge_hair_items(
         base_transferable_data = base.read_bytes(base_transferable, limit=64 * 1024 * 1024)
         addon_transferable_data = addon.read_bytes(addon_transferable, limit=64 * 1024 * 1024)
         base_bt_data = base.read_bytes(BASE_TRANSFERABLE_PATH, limit=512 * 1024 * 1024)
-        material_slot_offset = count_basetransferable_materials(base_bt_data)
+        addon_bt_data = (
+            addon.read_bytes(BASE_TRANSFERABLE_PATH, limit=512 * 1024 * 1024)
+            if BASE_TRANSFERABLE_PATH in addon.infos
+            else b""
+        )
         base_counts = hair_transferable_counts(base_transferable_data)
         merged_transferable, stats = merge_hair_transferables(
             base_transferable_data,
             addon_transferable_data,
-            material_slot_offset=material_slot_offset,
+            base_bt_data=base_bt_data,
+            addon_bt_data=addon_bt_data,
         )
         merged_base_transferable = base_bt_data
         common_material_records = 0
-        if BASE_TRANSFERABLE_PATH in addon.infos:
+        if addon_bt_data:
             merged_base_transferable, common_material_records = merge_base_transferables(
-                merged_base_transferable,
-                addon.read_bytes(BASE_TRANSFERABLE_PATH, limit=512 * 1024 * 1024),
+                base_bt_data,
+                addon_bt_data,
             )
+
+        replacements: dict[str, bytes] = {
+            base_transferable: merged_transferable,
+            BASE_TRANSFERABLE_PATH: merged_base_transferable,
+        }
+        merge_thumbnail = compose_merge_thumbnail(base.path, addon.path)
+        if merge_thumbnail:
+            replacements[THUMBNAIL_PATH] = merge_thumbnail
 
         additions: list[tuple[CustomItemArchive, str, str | None]] = []
         skipped_identical = 0
@@ -197,10 +211,7 @@ def merge_hair_items(
         written = write_transformed_archive(
             base,
             destination,
-            replacements={
-                base_transferable: merged_transferable,
-                BASE_TRANSFERABLE_PATH: merged_base_transferable,
-            },
+            replacements=replacements,
             additions=additions,
             force=force,
         )

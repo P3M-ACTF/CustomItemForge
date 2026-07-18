@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from custom_item_forge.core.model import InspectReport, ThumbnailState
+from custom_item_forge.core.thumbnail_compose import ensure_item_thumbnail
 from custom_item_forge.i18n import translate
 from custom_item_forge.ops.inspect import inspect_item
 from custom_item_forge.ui.photo_loader import photo_from_png
@@ -126,11 +127,17 @@ class PreviewCard(ttk.LabelFrame):
         self.current_report = report
 
         family = report.field_map("vroid").get("family")
-        png_bytes, used_fallback = resolve_display_png(
-            state=report.thumbnail_state,
-            raw_bytes=report.thumbnail_bytes,
-            family=family if isinstance(family, str) else None,
-        )
+        family_str = family if isinstance(family, str) else None
+        if report.thumbnail_state is ThumbnailState.OK and report.thumbnail_bytes:
+            png_bytes, used_fallback = resolve_display_png(
+                state=report.thumbnail_state,
+                raw_bytes=report.thumbnail_bytes,
+                family=family_str,
+            )
+        else:
+            generated = ensure_item_thumbnail(resolved, family=family_str)
+            png_bytes = generated
+            used_fallback = True
         self._png_bytes = png_bytes
         self._used_fallback = used_fallback
         self._last_render_size = (0, 0)
