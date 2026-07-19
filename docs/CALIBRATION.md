@@ -52,6 +52,8 @@ Accessories: Glasses=N, FurryEars=N, Tail=N, Hats=N, Custom=N
 
 **H1 confirmed:** selecting some Back presets in Studio may also select a linked Base in the UI. Exports remain **single-category** ZIPs (`HairBack` vs `BaseHair`). No multi-category Back+Base file.
 
+Full hair inspect/probe matrix: [`tests/fixtures/real/hair/BASELINE_MATRIX.md`](../tests/fixtures/real/hair/BASELINE_MATRIX.md).
+
 ## Validation workflow
 
 1. `cif inspect` / GUI inspect

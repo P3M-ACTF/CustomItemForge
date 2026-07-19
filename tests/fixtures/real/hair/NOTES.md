@@ -17,6 +17,8 @@ Exports from Studio **Presets** (not Custom). Naming: `{Category}{Letter}.vroidc
 
 Every inspected file has **exactly one** transferable + one transferable group. No multi-category ZIPs.
 
+Full inspect/probe dump: **[BASELINE_MATRIX.md](BASELINE_MATRIX.md)** / [BASELINE_MATRIX.json](BASELINE_MATRIX.json).
+
 ## Back ↔ Base (H1 confirmed)
 
 Studio may **auto-select** a linked Base when choosing some Back presets. That is UI selection, not a coupled export:
