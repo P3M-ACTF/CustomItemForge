@@ -12,7 +12,7 @@ Este proyecto es independiente de la marca VRoid; la compatibilidad se describe 
 - **Inspeccionar** con tres secciones: VRoid / VRoidCustomItem / Archivo
 - **Validar**, **clonar**, **comparar**, **probe**, **compatibilidad**
 - **GUI unificada** (Tkinter) — inglés por defecto, español disponible
-- **Motores por familia** (cabello / ropa / accesorio) con stubs honestos hasta recibir muestras de calibración
+- **Motores por familia** — cabello calibrado (Studio 2.14.0); ropa/accesorio con recategorizar; merge de ropa/accesorio espera muestras
 - **CLI**: `cif` / `custom-item-forge`
 
 ## Descarga (usuarios finales)
@@ -55,9 +55,7 @@ Consulta [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Muestras de calibración
 
-Las operaciones reales de fusión y recategorización requieren fixtures aportados por el usuario. Consulta [docs/CALIBRATION.md](docs/CALIBRATION.md).
-
-Coloca los archivos en `tests/fixtures/real/` (gitignored).
+Cabello calibrado con fixtures en `tests/fixtures/real/hair/` (binarios gitignored; ver `NOTES.md`). Ropa / accesorio aún necesitan exports — [docs/CALIBRATION.md](docs/CALIBRATION.md).
 
 ## Licencia
 

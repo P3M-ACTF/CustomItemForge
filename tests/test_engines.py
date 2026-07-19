@@ -59,6 +59,8 @@ def test_accessory_engine_stub() -> None:
     report = engine.compatibility("TransferableGroupType.N00.Level1.Glasses", language="en")
     assert report.family == "accessory"
     assert report.calibrated is False
+    assert report.can_recategorize is True
+    assert report.can_merge is False
     with pytest.raises(NotCalibratedError):
         engine.merge(
             __import__("pathlib").Path("x"),
@@ -72,6 +74,25 @@ def test_clothing_engine_stub() -> None:
     engine = ClothingEngine()
     report = engine.compatibility("TransferableGroupType.N00.Level1.Tops", language="en")
     assert report.family == "clothing"
+    assert report.can_recategorize is True
+    assert report.can_merge is False
+
+
+def test_dresses_alias_resolves_to_onepiece() -> None:
+    from custom_item_forge.catalog.categories import resolve_category
+
+    assert resolve_category("dresses").key == "onepiece"
+    assert resolve_category("Dress").key == "onepiece"
+
+
+def test_clothing_recategorize_synthetic(tmp_path: Path) -> None:
+    path = build_minimal_item(tmp_path / "tops.vroidcustomitem", category_suffix="Tops")
+    out = tmp_path / "bottoms.vroidcustomitem"
+    result = ClothingEngine().recategorize(path, out, "bottoms", force=True)
+    from custom_item_forge.core.archive import CustomItemArchive
+
+    with CustomItemArchive(result) as archive:
+        assert archive.category_id.endswith("Bottoms")
 
 
 def test_remap_material_slot_indices_increments_small_varints() -> None:

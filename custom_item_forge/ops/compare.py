@@ -48,7 +48,7 @@ def compare_items(
             "left_category": first.category_id,
             "right_category": second.category_id,
             "left_category_label": category_label(first.category_id, language),
-            "right_category_label": category_label(right.category_id, language),
+            "right_category_label": category_label(second.category_id, language),
             "left_family": category_family(first.category_id),
             "right_family": category_family(second.category_id),
             "only_left": sorted(first_names - second_names),

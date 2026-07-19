@@ -101,6 +101,8 @@
   "compat.cross_family": "Cross-family operations are blocked",
   "compat.awaiting_calibration": "Awaiting calibration samples for {family}",
   "compat.hair_ready": "Hair recategorize and merge are available for this slot",
+  "compat.clothing_recategorize": "Clothing recategorize is available; merge awaits Studio samples",
+  "compat.accessory_recategorize": "Accessory recategorize is available; merge awaits Studio samples",
   "error.unknown_family": "Unknown family for category: {category}",
   "error.unsupported_family": "Unsupported family: {family}",
   "error.cross_family_recategorize": "Cross-family category changes are unsafe",

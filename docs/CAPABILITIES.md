@@ -1,6 +1,6 @@
 # Capabilities
 
-## Supported now (Phase 0)
+## Supported now
 
 | Operation | Status |
 |---|---|
@@ -11,7 +11,7 @@
 | Clone / repackage | Yes |
 | Compare structure | Yes |
 | Probe root group | Yes |
-| Compatibility report | Yes (honest stubs) |
+| Compatibility report | Yes (honest stubs when not calibrated) |
 | GUI unified shell | Yes |
 | i18n EN / ES | Yes |
 
@@ -19,10 +19,16 @@
 
 | Family | Inspect | Recategorize | Merge |
 |---|---|---|---|
-| Hair | Yes | Yes (VRoidHairComposer 0.4.x logic) | Yes (same category) |
-| Clothing | Yes | Awaiting calibration | Awaiting calibration |
-| Accessory | Yes | Awaiting calibration | Awaiting calibration |
+| Hair | Yes | Yes (golden-tested on Studio 2.14.0 fixtures) | Yes (same category; Extra merge verified) |
+| Clothing | Yes | Yes (category rewrite; Studio round-trip pending) | Awaiting calibration samples |
+| Accessory | Yes | Yes (category rewrite; Studio round-trip pending) | Awaiting calibration samples |
 | Cross-family | Blocked | Blocked | Blocked |
+
+Hair notes (2.14.0):
+
+- Fixtures under `tests/fixtures/real/hair/` cover Front/Back/Base/Overall/Extensions/Side/Ahoge/Extra
+- Back↔Base coupling is **UI selection only** (H1); each export is a single category
+- `BaseHair` uses `TransferableGroupEditType.BaseHair` (distinct from strand hair)
 
 ## Explicitly not supported
 
@@ -30,6 +36,7 @@
 - Editing full `.vroid` model archives
 - External Blender / Unity / VRM conversion pipeline
 - Cloud / marketplace features
+- Inventing protobuf suffixes for unconfirmed Studio slots (Inner Top, FurryEars, etc.)
 
 ## UI themes
 
