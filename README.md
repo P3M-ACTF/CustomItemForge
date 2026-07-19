@@ -7,7 +7,7 @@ This project is independent from VRoid branding; compatibility is described as *
 
 [English](README.md) · [Español](README_ES.md)
 
-## Features (v0.1.1-alpha)
+## Features (v0.1.1-alpha.0)
 
 - **Inspect** with three sections: VRoid / VRoidCustomItem / File
 - **Validate**, **clone**, **compare**, **probe**, **compatibility**

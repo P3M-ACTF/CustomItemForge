@@ -4,65 +4,78 @@
 
 Esta guía es para **ti** (quien publica). Los usuarios solo descargan el zip.
 
-## Qué hace la Action
+## Flujo normal (release-please)
+
+1. Trabajas y mergeas a `main` con **Conventional Commits** (`feat:`, `fix:`, …).
+2. El workflow **Release Please** abre o actualiza una **Release PR** (versión + `CHANGELOG.md`).
+3. Cuando quieras sacar un alpha: **mergeas esa Release PR**.
+4. Eso crea el tag (`vX.Y.Z-alpha.N`), la GitHub Release (marcada como **prerelease**) y en el mismo job genera y sube el `.zip` (~5 min).
+
+No hace falta crear la Release a mano en la UI.
+
+```mermaid
+flowchart LR
+  commits[Pushes a main]
+  rpPR[Release PR]
+  merge[Merge Release PR]
+  zip[Tag + Release + zip]
+
+  commits --> rpPR
+  rpPR --> merge
+  merge --> zip
+```
+
+### Ver progreso
+
+1. **Actions** → **Release Please** (abre/actualiza la PR o publica)
+2. Tras el merge de la Release PR, en esa misma ejecución mira los pasos de build/upload del zip
+3. **Releases** → Assets → `CustomItemForge-*.zip`
+
+### Conventional Commits (obligatorio)
+
+Sin estos prefijos, release-please no sabe cuándo subir versión:
+
+| Prefijo | Efecto (0.x + alpha) |
+|---|---|
+| `feat:` | bump (patch / alpha) |
+| `fix:` | bump (patch / alpha) |
+| `feat!:` o `BREAKING CHANGE:` | bump minor (pre-major) |
+| `docs:`, `chore:`, `ci:` | sin release |
+
+Ejemplos:
+
+```text
+feat: add clothing merge preview
+fix: prevent crash when material slot is missing
+docs: clarify calibration sample layout
+```
+
+### Salir de alpha (más adelante)
+
+En [`release-please-config.json`](../../release-please-config.json), quita o pon `"prerelease": false` (y ajusta `prerelease-type` si aplica). Las siguientes releases dejarán de ser alpha/prerelease.
+
+---
+
+## Regenerar el zip de una release que ya existe
 
 Workflow: **Release CustomItemForge**  
 Archivo: `.github/workflows/release-custom-item-forge.yml`
 
-1. Compila el bundle (`CustomItemForge.pyz`, launchers, `RELEASE.txt`)
-2. Crea `CustomItemForge-<versión>.zip`
-3. Lo sube a la release de GitHub (sustituye el zip anterior si ya existía)
+### Opción A — Re-run
 
-Tarda unos **~5 minutos**. Es normal.
+1. **Actions** → la ejecución que subió el zip → **Re-run all jobs**
 
----
+### Opción B — Run workflow (recomendado)
 
-## Cómo publicar una release nueva
-
-1. Entra en el repo: https://github.com/P3M-ACTF/VRoidTools
-2. Pestaña **Releases** → **Draft a new release**
-3. Elige o crea un **tag** (ej. `v0.1.0-preview`)
-4. Título y notas → botón verde **Publish release**
-5. Eso **dispara** la Action automáticamente
-
-No hace falta subir el zip a mano.
-
----
-
-## Ver el progreso (trigger en marcha)
-
-1. Pestaña **Actions**
-2. A la izquierda: **Release CustomItemForge**
-3. Clic en la ejecución más reciente (suele decir el tag)
-4. Clic en el job **bundle** → ves cada paso en vivo
-
-También desde la página de la Release: mira el check / enlace a Actions.
-
-Cuando termine, en la Release → **Assets** verás el `.zip`.
-
----
-
-## Relanzar / regenerar el zip de una release que ya existe
-
-### Opción A — Re-run (misma ejecución)
-
-Si la Action ya corrió para esa release:
-
-1. **Actions** → **Release CustomItemForge** → abre esa ejecución
-2. Arriba a la derecha: **Re-run all jobs**
+1. **Actions** → **Release CustomItemForge** → **Run workflow**
+2. Escribe el tag exacto (ej. `v0.1.1-alpha.1`)
 3. Espera ~5 min → el zip se sustituye (`--clobber`)
 
-### Opción B — Botón manual (recomendado)
+---
 
-Sirve para regenerar el zip de **cualquier tag** sin crear una release nueva:
+## Release manual (solo si hace falta)
 
-1. **Actions** → **Release CustomItemForge**
-2. Botón **Run workflow** (derecha)
-3. En **tag**, escribe el tag exacto (ej. `v0.1.0-preview`)
-4. **Run workflow**
-5. Espera ~5 min → el zip de esa release se actualiza
-
-El tag debe existir ya como Release publicada. Si te equivocas de nombre, fallará en el paso de upload.
+Si publicas una Release a mano en la UI, **Release CustomItemForge** también se dispara (`release: published`) y sube el zip. El camino feliz es release-please.
 
 ---
 
@@ -70,10 +83,11 @@ El tag debe existir ya como Release publicada. Si te equivocas de nombre, fallar
 
 | Quiero… | Hago… |
 |---|---|
-| Primera vez / versión nueva | Releases → Publish release |
-| Ver si va bien | Actions → Release CustomItemForge |
-| Falló o quiero zip nuevo del mismo tag | Re-run **o** Run workflow con el tag |
-| Probar el zip en local | `python scripts/build_release.py --zip --tag vX.Y.Z` |
+| Preparar el próximo alpha | Commits convencionales a `main` → revisar Release PR |
+| Publicar alpha | Mergear la Release PR |
+| Ver si va bien | Actions → Release Please |
+| Regenerar zip del mismo tag | Run workflow en Release CustomItemForge |
+| Probar zip en local | `python scripts/build_release.py --zip --tag vX.Y.Z-alpha.N` |
 
 ---
 
@@ -81,17 +95,6 @@ El tag debe existir ya como Release publicada. Si te equivocas de nombre, fallar
 
 - Abre la app con **`CustomItemForge_Win.pyw`** (doble clic).
 - **No** abras `CustomItemForge.pyz` para la GUI: eso abre una ventana de consola.
-- El `.pyz` es solo para la **línea de comandos** (`python CustomItemForge.pyz inspect …`).
+- El `.pyz` es solo para la **línea de comandos**.
 
----
-
-## Si algo falla
-
-1. Abre la ejecución en **Actions** y mira el paso en rojo.
-2. Errores típicos:
-   - Tag mal escrito en Run workflow
-   - La Release no existe todavía (solo el tag suelto no basta para `gh release upload`)
-   - Python / dependencias en CI (raro; el log lo dice)
-3. Corrige y vuelve a **Re-run** o **Run workflow**.
-
-Más detalle técnico del build local: [RELEASE.md](RELEASE.md).
+Más detalle del build local: [RELEASE.md](RELEASE.md).

@@ -7,7 +7,7 @@ Este proyecto es independiente de la marca VRoid; la compatibilidad se describe 
 
 [English](README.md) · [Español](README_ES.md)
 
-## Funcionalidades (v0.1.1-alpha)
+## Funcionalidades (v0.1.1-alpha.0)
 
 - **Inspeccionar** con tres secciones: VRoid / VRoidCustomItem / Archivo
 - **Validar**, **clonar**, **comparar**, **probe**, **compatibilidad**

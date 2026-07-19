@@ -4,57 +4,59 @@
 
 For **maintainers** who publish. End users only download the zip.
 
-## What the Action does
+## Happy path (release-please)
 
-Workflow: **Release CustomItemForge**  
-File: `.github/workflows/release-custom-item-forge.yml`
+1. Merge to `main` using **Conventional Commits** (`feat:`, `fix:`, …).
+2. The **Release Please** workflow opens or updates a **Release PR** (version bump + `CHANGELOG.md`).
+3. When you want an alpha: **merge that Release PR**.
+4. That creates the tag (`vX.Y.Z-alpha.N`), a GitHub Release marked **prerelease**, and in the same job builds and uploads the `.zip` (~5 min).
 
-1. Builds the bundle (`.pyz`, launchers, `RELEASE.txt`)
-2. Creates `CustomItemForge-<version>.zip`
-3. Uploads it to the GitHub Release (replaces a previous zip if present)
+You do not need to create the Release by hand in the UI.
 
-Takes about **~5 minutes**. That is normal.
+### Watch progress
 
----
+1. **Actions** → **Release Please**
+2. After merging the Release PR, check the zip build/upload steps on that run
+3. **Releases** → Assets → `CustomItemForge-*.zip`
 
-## Publish a new release
+### Conventional Commits (required)
 
-1. Open https://github.com/P3M-ACTF/VRoidTools
-2. **Releases** → **Draft a new release**
-3. Choose/create a **tag** (e.g. `v0.1.0-preview`)
-4. Title + notes → **Publish release**
-5. That **triggers** the Action automatically
+| Prefix | Effect (0.x + alpha) |
+|---|---|
+| `feat:` | bump (patch / alpha) |
+| `fix:` | bump (patch / alpha) |
+| `feat!:` or `BREAKING CHANGE:` | bump minor (pre-major) |
+| `docs:`, `chore:`, `ci:` | no release |
 
-You do not need to upload the zip by hand.
+Examples:
 
----
+```text
+feat: add clothing merge preview
+fix: prevent crash when material slot is missing
+docs: clarify calibration sample layout
+```
 
-## Watch progress
+### Leaving alpha later
 
-1. **Actions** tab
-2. Left: **Release CustomItemForge**
-3. Open the latest run
-4. Open job **bundle** → live steps
-
-When it finishes, the Release **Assets** list includes the `.zip`.
+In [`release-please-config.json`](../../release-please-config.json), set `"prerelease": false` (and drop `prerelease-type` if needed). Later releases will no longer be alpha/prerelease.
 
 ---
 
 ## Rebuild the zip for an existing release
 
-### A — Re-run the same run
+Workflow: **Release CustomItemForge**  
+File: `.github/workflows/release-custom-item-forge.yml`
 
-1. **Actions** → open that run → **Re-run all jobs**
-2. Wait ~5 min → zip is replaced (`--clobber`)
+- **Re-run** the run that uploaded the zip, or
+- **Run workflow** with the exact tag (e.g. `v0.1.1-alpha.1`)
 
-### B — Manual Run workflow (recommended)
+Takes ~5 minutes; the asset is replaced (`--clobber`).
 
-1. **Actions** → **Release CustomItemForge**
-2. **Run workflow**
-3. Enter the exact **tag** (e.g. `v0.1.0-preview`)
-4. **Run workflow** → wait ~5 min
+---
 
-The tag must already be a published Release.
+## Manual release (escape hatch)
+
+A hand-published Release still triggers **Release CustomItemForge** (`release: published`). Prefer release-please for the happy path.
 
 ---
 
@@ -62,17 +64,18 @@ The tag must already be a published Release.
 
 | Goal | Do this |
 |---|---|
-| New version | Releases → Publish release |
-| See status | Actions → Release CustomItemForge |
-| Regenerate zip for same tag | Re-run **or** Run workflow with tag |
-| Local zip test | `python scripts/build_release.py --zip --tag vX.Y.Z` |
+| Prepare next alpha | Conventional commits on `main` → review Release PR |
+| Publish alpha | Merge the Release PR |
+| Check status | Actions → Release Please |
+| Regenerate zip for same tag | Run workflow on Release CustomItemForge |
+| Local zip test | `python scripts/build_release.py --zip --tag vX.Y.Z-alpha.N` |
 
 ---
 
 ## Windows: GUI without a console
 
 - Open the app with **`CustomItemForge_Win.pyw`** (double-click).
-- Do **not** double-click `CustomItemForge.pyz` for the GUI (console window).
+- Do **not** double-click `CustomItemForge.pyz` for the GUI.
 - Use the `.pyz` only for the **CLI**.
 
 Local build details: [RELEASE.md](RELEASE.md).
