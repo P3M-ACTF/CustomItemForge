@@ -42,10 +42,9 @@ if __name__ == "__main__":
 """
 
 PYW_RELEASE = f'''\
-"""CustomItemForge GUI launcher (release). Double-click to open the app."""
+"""CustomItemForge GUI launcher (release). Double-click to open the app (no console)."""
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -57,7 +56,12 @@ if not PYZ.is_file():
         f"Missing {{PYZ.name}} in {{HERE}}. Run scripts/build_release.py first."
     )
 
-os.execv(sys.executable, [sys.executable, str(PYZ)])
+# Import from the .pyz inside this pythonw process.
+# Do NOT exec python.exe / the .pyz - that opens a console window on Windows.
+sys.path.insert(0, str(PYZ) + "/site-packages")
+from custom_item_forge.ui.app import main
+
+main()
 '''
 
 SH_RELEASE = f"""\
@@ -85,16 +89,16 @@ Windows
 -------
   GUI (no console): double-click {PYW_NAME}
   CLI:              python {PYZ_NAME} inspect item.vroidcustomitem
-                    python {PYZ_NAME} gui
 
 macOS / Linux
 -------------
   GUI:  ./{SH_NAME}
   CLI:  python3 {PYZ_NAME} inspect item.vroidcustomitem
-        python3 {PYZ_NAME} gui
 
 Notes
 -----
+- For the GUI on Windows, use {PYW_NAME} — do not double-click {PYZ_NAME}
+  (that opens a console). The .pyz file is for the command line.
 - Original .vroidcustomitem files are never modified.
 - Merge and recategorize may be unavailable until calibration samples are provided.
 - Thumbnail previews work best when Pillow is available in the build (included in release).

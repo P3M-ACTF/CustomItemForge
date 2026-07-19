@@ -30,6 +30,9 @@ Este proyecto es independiente de la marca VRoid; la compatibilidad se describe 
 Requiere **Python 3.12+ con Tkinter**. El build de release incluye Pillow para miniaturas.
 
 Cada GitHub Release publicada genera y adjunta este zip automáticamente.
+Quien publica: ver [docs/GITHUB_RELEASES_ES.md](docs/GITHUB_RELEASES_ES.md) (guía fácil).
+
+En Windows, abre la GUI con **`CustomItemForge_Win.pyw`** (no el `.pyz` — eso abre una consola).
 
 ## Inicio rápido (desarrolladores)
 

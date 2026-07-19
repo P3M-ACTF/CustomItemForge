@@ -34,11 +34,24 @@ Output: `dist/CustomItemForge-<label>.zip` containing a single folder with all r
 
 ### GitHub Releases (recommended)
 
+See the step-by-step maintainer guide:
+
+- [GITHUB_RELEASES.md](GITHUB_RELEASES.md) (English)
+- [GITHUB_RELEASES_ES.md](GITHUB_RELEASES_ES.md) (Español — guía fácil)
+
+Short version:
+
 1. Create a **GitHub Release** on [VRoidTools](https://github.com/P3M-ACTF/VRoidTools/releases) with a tag (e.g. `v0.1.0-preview`).
 2. Publish the release — CI runs [`.github/workflows/release-custom-item-forge.yml`](../../.github/workflows/release-custom-item-forge.yml):
+   - Checks out that tag
    - `python scripts/build_release.py --zip --tag <tag>`
    - Uploads `dist/CustomItemForge-<label>.zip` as a release asset
-3. Users download that zip from the release page.
+3. To **rebuild** the zip later: Actions → **Release CustomItemForge** → **Run workflow** with the same tag (or Re-run the previous job).
+4. Users download that zip from the release page.
+
+### Windows GUI (no console)
+
+End users should open **`CustomItemForge_Win.pyw`**, not the `.pyz`. The `.pyz` is for CLI only; double-clicking it opens a console.
 
 ### Manual zip (local testing)
 
