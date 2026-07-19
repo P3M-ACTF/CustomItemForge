@@ -55,9 +55,7 @@ See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Calibration samples
 
-Real merge/recategorize operations require user-provided fixtures. See [docs/CALIBRATION.md](docs/CALIBRATION.md).
-
-Place files under `tests/fixtures/real/` (gitignored).
+Hair is calibrated against Studio **2.14.0** fixtures under `tests/fixtures/real/hair/` (gitignored binaries; see `NOTES.md`). Clothing / accessory merge still need samples — [docs/CALIBRATION.md](docs/CALIBRATION.md).
 
 ## License
 
