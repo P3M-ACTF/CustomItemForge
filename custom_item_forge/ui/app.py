@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
 
+from custom_item_forge import __version__
 from custom_item_forge.core.errors import ForgeError, NotCalibratedError
 from custom_item_forge.i18n import translate
 from custom_item_forge.ui.components.app_header import AppHeader
@@ -29,7 +30,7 @@ class CustomItemForgeApp:
         apply_simple_theme(self.root)
         self.root.geometry("1180x760")
         self.root.minsize(940, 620)
-        self.root.title(translate("app.window_title", self.locale))
+        self.root.title(translate("app.window_title", self.locale, version=__version__))
 
         self.status_var = tk.StringVar(value=translate("status.ready", self.locale))
         self._events: queue.Queue[tuple[str, object, Callable[[object], None] | None]] = queue.Queue()
@@ -162,7 +163,7 @@ class CustomItemForgeApp:
 
     def toggle_language(self) -> None:
         self.locale = "es" if self.locale == "en" else "en"
-        self.root.title(translate("app.window_title", self.locale))
+        self.root.title(translate("app.window_title", self.locale, version=__version__))
         self.header.locale = self.locale
         self.log_view.locale = self.locale
         self.workspace.locale = self.locale

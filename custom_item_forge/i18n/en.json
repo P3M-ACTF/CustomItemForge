@@ -1,7 +1,7 @@
 {
   "app.title": "CustomItemForge",
   "app.tagline": "for VRoid",
-  "app.window_title": "CustomItemForge 0.1.0 — preview",
+  "app.window_title": "CustomItemForge {version} — preview",
   "tab.inspect": "Inspect",
   "tab.inspect.icon": "🔍  Inspect",
   "tab.change": "Change",

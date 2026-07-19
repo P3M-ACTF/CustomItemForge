@@ -16,5 +16,5 @@ __all__ = [
     "REPO_URL",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.1.1-alpha"
 REPO_URL = "https://github.com/P3M-ACTF/VRoidTools"
