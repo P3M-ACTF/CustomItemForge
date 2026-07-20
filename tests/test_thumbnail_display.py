@@ -113,6 +113,32 @@ def test_compose_overlay_square_is_square_and_keeps_both_layers() -> None:
     assert blue[2] > 180 and blue[0] < 80
 
 
+def test_compose_overlay_knockouts_opaque_studio_background() -> None:
+    """Studio thumbs are opaque #F5F5F5; without knockout the add-on hides the base."""
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from custom_item_forge.core.thumbnail_compose import compose_overlay_square_png
+
+    def opaque_subject(size: int, color: tuple[int, int, int], box: tuple[int, int, int, int]) -> bytes:
+        image = Image.new("RGBA", (size, size), (245, 245, 245, 255))
+        for x in range(box[0], box[2]):
+            for y in range(box[1], box[3]):
+                image.putpixel((x, y), (*color, 255))
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+
+    base = opaque_subject(128, (20, 20, 20), (0, 40, 30, 80))
+    addon = opaque_subject(128, (180, 100, 40), (98, 40, 128, 80))
+    merged = compose_overlay_square_png(base, addon, size=128)
+    image = Image.open(io.BytesIO(merged))
+    left = image.getpixel((10, 60))
+    right = image.getpixel((110, 60))
+    assert left[0] < 50 and left[1] < 50  # base dark subject survives
+    assert right[0] > 150 and right[2] < 80  # addon brown subject survives
+
+
 def test_compose_merge_thumbnail_writes_square_png(tmp_path: Path) -> None:
     pytest.importorskip("PIL")
     from PIL import Image

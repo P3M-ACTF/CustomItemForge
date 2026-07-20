@@ -93,6 +93,8 @@ Studio’s custom-item grid expects a **square** preview (~512×512), matching p
 
 CustomItemForge builds `thumbnails/thumbnail.png` by **alpha-compositing** the base and add-on embedded PNGs onto a light 512×512 canvas (`compose_overlay_square_png`). A wide side-by-side collage (e.g. 1032×512) is cropped badly in Studio and must not be written.
 
+Studio thumbnails are usually **fully opaque** with a light fill (`~#F5F5F5`), not true transparency. Before overlay, near-white pixels are knocked out so the add-on layer does not erase the base subject.
+
 No 3D viewport / geometry decode: only the PNGs Studio already embedded in each item.
 
 Category / edit-type differences:

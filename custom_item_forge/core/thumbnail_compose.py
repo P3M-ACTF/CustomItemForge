@@ -13,6 +13,9 @@ from custom_item_forge.ui.thumbnail_display import decode_image_to_png
 # Studio custom-item grid expects roughly square previews (~512×512).
 DEFAULT_MERGE_THUMB_SIZE = 512
 _CANVAS_BG = (245, 245, 245, 255)
+# Studio embeds opaque light backgrounds (not alpha). Treat near-white as transparent
+# so overlay does not wipe the base subject.
+_WHITE_KNOCKOUT_MIN = 235
 
 
 def _load_png(path: Path) -> bytes | None:
@@ -20,6 +23,22 @@ def _load_png(path: Path) -> bytes | None:
     if result.state == ThumbnailState.OK and result.data:
         return decode_image_to_png(result.data)
     return None
+
+
+def _knockout_studio_background(image):
+    """Make near-white opaque pixels transparent (Studio thumbnail convention)."""
+    from PIL import Image
+
+    rgba = image.convert("RGBA")
+    pixels = rgba.load()
+    width, height = rgba.size
+    threshold = _WHITE_KNOCKOUT_MIN
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            if a > 0 and r >= threshold and g >= threshold and b >= threshold:
+                pixels[x, y] = (r, g, b, 0)
+    return rgba
 
 
 def _fit_centered(image, size: int):
@@ -39,12 +58,17 @@ def compose_overlay_square_png(
     *,
     size: int = DEFAULT_MERGE_THUMB_SIZE,
 ) -> bytes:
-    """Overlay two PNG previews on a square canvas (Studio-friendly aspect)."""
+    """Overlay two PNG previews on a square canvas (Studio-friendly aspect).
+
+    Studio custom-item thumbnails are typically opaque with a light gray/white
+    fill. Those fills are knocked out before compositing so the add-on does not
+    paint over the base subject.
+    """
     from PIL import Image
 
     side = max(64, size)
-    base_img = Image.open(io.BytesIO(base)).convert("RGBA")
-    addon_img = Image.open(io.BytesIO(addon)).convert("RGBA")
+    base_img = _knockout_studio_background(Image.open(io.BytesIO(base)))
+    addon_img = _knockout_studio_background(Image.open(io.BytesIO(addon)))
     canvas = Image.new("RGBA", (side, side), _CANVAS_BG)
     canvas.alpha_composite(_fit_centered(base_img, side))
     canvas.alpha_composite(_fit_centered(addon_img, side))
