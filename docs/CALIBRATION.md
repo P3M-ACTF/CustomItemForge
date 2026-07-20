@@ -54,6 +54,8 @@ Accessories: Glasses=N, FurryEars=N, Tail=N, Hats=N, Custom=N
 
 Full hair inspect/probe matrix: [`tests/fixtures/real/hair/BASELINE_MATRIX.md`](../tests/fixtures/real/hair/BASELINE_MATRIX.md).
 
+Hair merge wire format, remapping rules, and the Extra blob-store bug (`basetransferable` payload field 6): [`HAIR_MERGE_FORMAT.md`](HAIR_MERGE_FORMAT.md).
+
 ## Validation workflow
 
 1. `cif inspect` / GUI inspect

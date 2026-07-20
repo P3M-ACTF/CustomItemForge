@@ -19,7 +19,7 @@
 
 | Family | Inspect | Recategorize | Merge |
 |---|---|---|---|
-| Hair | Yes | Yes (golden-tested on Studio 2.14.0 fixtures) | Yes (same category; Extra merge verified) |
+| Hair | Yes | Yes (golden-tested on Studio 2.14.0 fixtures) | Yes (same category; Common.Base includes image blob store `f6`) |
 | Clothing | Yes | Yes (category rewrite; Studio round-trip pending) | Awaiting calibration samples |
 | Accessory | Yes | Yes (category rewrite; Studio round-trip pending) | Awaiting calibration samples |
 | Cross-family | Blocked | Blocked | Blocked |

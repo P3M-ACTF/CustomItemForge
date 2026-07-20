@@ -159,6 +159,59 @@ def _merge_base_payload_f5(base_payload: bytes, addon_payload: bytes) -> bytes:
     return _replace_one(base_payload, 5, merged_f5, "base payload f5")
 
 
+def _payload_bytes_or_empty(payload: bytes, field_number: int) -> bytes:
+    """Return length-delimited payload field bytes, or empty if missing/empty."""
+    matches = [field for field in parse_fields(payload) if field.number == field_number]
+    if not matches:
+        return b""
+    field = matches[0]
+    if field.wire_type != 2 or not isinstance(field.value, bytes):
+        return b""
+    return field.value
+
+
+def _set_or_replace_payload_field(payload: bytes, field_number: int, value: bytes) -> bytes:
+    """Replace an existing payload field, or insert it in numeric field order."""
+    fields = parse_fields(payload)
+    if any(field.number == field_number for field in fields):
+        return _replace_one(payload, field_number, value, f"base payload f{field_number}")
+    encoded = encode_field(field_number, 2, value)
+    parts: list[bytes] = []
+    inserted = False
+    for field in fields:
+        if not inserted and field.number > field_number:
+            parts.append(encoded)
+            inserted = True
+        parts.append(field.raw)
+    if not inserted:
+        parts.append(encoded)
+    return b"".join(parts)
+
+
+def _merge_base_payload_f6(base_payload: bytes, addon_payload: bytes) -> tuple[bytes, int]:
+    """Merge Common.Base image/blob store (payload field 6).
+
+    Studio resolves texture → image IDs against this store during
+    ``DuplicateSharedHairMaterial``. Omitting addon blobs yields
+    ``KeyNotFoundException`` on import (see docs/HAIR_MERGE_FORMAT.md).
+    """
+    base_blobs = _payload_bytes_or_empty(base_payload, 6)
+    addon_blobs = _payload_bytes_or_empty(addon_payload, 6)
+    if not addon_blobs:
+        return base_payload, 0
+    if not base_blobs:
+        return _set_or_replace_payload_field(base_payload, 6, addon_blobs), sum(
+            1 for field in parse_fields(addon_blobs) if field.number == 1
+        )
+    merged_blobs, counts = _append_unique(
+        base_blobs,
+        addon_blobs,
+        numbers={1},
+        label="common image blob store",
+    )
+    return _set_or_replace_payload_field(base_payload, 6, merged_blobs), counts.get(1, 0)
+
+
 def merge_base_transferables(base_data: bytes, addon_data: bytes) -> tuple[bytes, int]:
     try:
         base_type = _one(base_data, 2, "base transferable").text()
@@ -180,8 +233,9 @@ def merge_base_transferables(base_data: bytes, addon_data: bytes) -> tuple[bytes
     )
     merged_payload = _replace_one(base_payload, 2, merged_store, "base payload")
     merged_payload = _merge_base_payload_f5(merged_payload, addon_payload)
+    merged_payload, blob_count = _merge_base_payload_f6(merged_payload, addon_payload)
     merged = _replace_one(base_data, 3, merged_payload, "base transferable")
-    return merged, sum(counts.values())
+    return merged, sum(counts.values()) + blob_count
 
 
 def _remap_nested(data: bytes, maps: HairReferenceMaps, context: dict[str, bool]) -> bytes:

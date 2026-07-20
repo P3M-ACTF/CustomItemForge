@@ -95,7 +95,47 @@ def test_clothing_recategorize_synthetic(tmp_path: Path) -> None:
         assert archive.category_id.endswith("Bottoms")
 
 
-def test_remap_material_slot_indices_increments_small_varints() -> None:
+def test_merge_base_transferables_keeps_addon_image_blobs() -> None:
+    """Regression: Studio KeyNotFoundException when addon basetransferable f6 is dropped."""
+    from custom_item_forge.core.protobuf_wire import encode_field, parse_fields
+    from custom_item_forge.engines.hair.merge import merge_base_transferables
+
+    def wrap_common_base(payload: bytes) -> bytes:
+        return (
+            encode_field(2, 2, b"TransferableType.Common.Base")
+            + encode_field(3, 2, payload)
+        )
+
+    def material_store(*ids: str) -> bytes:
+        return b"".join(
+            encode_field(1, 2, encode_field(1, 2, identity.encode("utf-8")))
+            for identity in ids
+        )
+
+    def blob_store(*ids: str) -> bytes:
+        return b"".join(
+            encode_field(
+                1,
+                2,
+                encode_field(1, 2, identity.encode("utf-8"))
+                + encode_field(2, 2, b"PNG:" + identity.encode("utf-8")),
+            )
+            for identity in ids
+        )
+
+    def payload(store: bytes, blobs: bytes) -> bytes:
+        return encode_field(2, 2, store) + encode_field(6, 2, blobs)
+
+    base = wrap_common_base(encode_field(2, 2, material_store("mat-base")) + encode_field(6, 2, b""))
+    addon = wrap_common_base(
+        payload(material_store("mat-addon"), blob_store("438fffaf21194d9bbd59b04729d72ede"))
+    )
+    merged, count = merge_base_transferables(base, addon)
+    assert count >= 1
+    merged_payload = next(field.value for field in parse_fields(merged) if field.number == 3)
+    f6 = next(field.value for field in parse_fields(merged_payload) if field.number == 6)
+    assert isinstance(f6, bytes)
+    assert b"438fffaf21194d9bbd59b04729d72ede" in f6
     from custom_item_forge.core.protobuf_wire import encode_field, parse_fields
     from custom_item_forge.engines.hair.merge import (
         HairReferenceMaps,

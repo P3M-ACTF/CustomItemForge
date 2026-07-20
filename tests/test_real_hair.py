@@ -78,6 +78,32 @@ def test_inspect_front_reports_hair_family() -> None:
     assert "Front" in str(fields.get("category_label", ""))
 
 
+def _basetransferable_blob_ids(path: Path) -> set[str]:
+    from custom_item_forge.core.archive import BASE_TRANSFERABLE_PATH
+    from custom_item_forge.core.protobuf_wire import parse_fields
+
+    with CustomItemArchive(path) as archive:
+        data = archive.read_bytes(BASE_TRANSFERABLE_PATH, limit=512 * 1024 * 1024)
+    payload = next(field.value for field in parse_fields(data) if field.number == 3)
+    blob_store = next(
+        (field.value for field in parse_fields(payload) if field.number == 6),
+        b"",
+    )
+    if not isinstance(blob_store, bytes) or not blob_store:
+        return set()
+    ids: set[str] = set()
+    for entry in parse_fields(blob_store):
+        if entry.wire_type != 2 or not isinstance(entry.value, bytes):
+            continue
+        for item in parse_fields(entry.value):
+            if item.number == 1:
+                text = item.text()
+                if text:
+                    ids.add(text)
+                break
+    return ids
+
+
 def test_merge_extra_a_and_b(tmp_path: Path) -> None:
     engine = HairEngine()
     output = tmp_path / "merged-extra.vroidcustomitem"
@@ -91,6 +117,11 @@ def test_merge_extra_a_and_b(tmp_path: Path) -> None:
     assert output.is_file()
     with CustomItemArchive(output) as archive:
         assert archive.category_id.endswith("HairHanege")
+    expected = _basetransferable_blob_ids(HAIR_DIR / "ExtraA.vroidcustomitem") | _basetransferable_blob_ids(
+        HAIR_DIR / "ExtraB.vroidcustomitem"
+    )
+    assert expected
+    assert _basetransferable_blob_ids(output) == expected
 
 
 def test_recategorize_front_to_back(tmp_path: Path) -> None:
