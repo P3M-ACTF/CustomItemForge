@@ -5,10 +5,14 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from custom_item_forge.core.archive import THUMBNAIL_PATH, CustomItemArchive
+from custom_item_forge.core.archive import CustomItemArchive
 from custom_item_forge.core.model import ThumbnailState
 from custom_item_forge.core.thumbnail import load_thumbnail, load_thumbnail_from_path
 from custom_item_forge.ui.thumbnail_display import decode_image_to_png
+
+# Studio custom-item grid expects roughly square previews (~512×512).
+DEFAULT_MERGE_THUMB_SIZE = 512
+_CANVAS_BG = (245, 245, 245, 255)
 
 
 def _load_png(path: Path) -> bytes | None:
@@ -18,24 +22,32 @@ def _load_png(path: Path) -> bytes | None:
     return None
 
 
-def compose_side_by_side_png(left: bytes, right: bytes, *, height: int = 512) -> bytes:
-    """Place two PNG previews side by side for merged items."""
+def _fit_centered(image, size: int):
     from PIL import Image
 
-    left_img = Image.open(io.BytesIO(left)).convert("RGBA")
-    right_img = Image.open(io.BytesIO(right)).convert("RGBA")
-    target_h = max(64, height)
-    left_img.thumbnail((target_h, target_h), Image.Resampling.LANCZOS)
-    right_img.thumbnail((target_h, target_h), Image.Resampling.LANCZOS)
-    gap = 8
-    canvas = Image.new(
-        "RGBA",
-        (left_img.width + gap + right_img.width, max(left_img.height, right_img.height)),
-        (245, 245, 245, 255),
-    )
-    canvas.paste(left_img, (0, (canvas.height - left_img.height) // 2), left_img)
-    offset_x = left_img.width + gap
-    canvas.paste(right_img, (offset_x, (canvas.height - right_img.height) // 2), right_img)
+    fitted = image.copy()
+    fitted.thumbnail((size, size), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    offset = ((size - fitted.width) // 2, (size - fitted.height) // 2)
+    canvas.paste(fitted, offset, fitted)
+    return canvas
+
+
+def compose_overlay_square_png(
+    base: bytes,
+    addon: bytes,
+    *,
+    size: int = DEFAULT_MERGE_THUMB_SIZE,
+) -> bytes:
+    """Overlay two PNG previews on a square canvas (Studio-friendly aspect)."""
+    from PIL import Image
+
+    side = max(64, size)
+    base_img = Image.open(io.BytesIO(base)).convert("RGBA")
+    addon_img = Image.open(io.BytesIO(addon)).convert("RGBA")
+    canvas = Image.new("RGBA", (side, side), _CANVAS_BG)
+    canvas.alpha_composite(_fit_centered(base_img, side))
+    canvas.alpha_composite(_fit_centered(addon_img, side))
     buffer = io.BytesIO()
     canvas.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()
@@ -45,13 +57,18 @@ def compose_merge_thumbnail(
     base_path: str | Path,
     addon_path: str | Path,
     *,
-    height: int = 512,
+    size: int = DEFAULT_MERGE_THUMB_SIZE,
+    height: int | None = None,
 ) -> bytes | None:
-    """Build a merge preview thumbnail from base + add-on embedded PNGs."""
+    """Build a square merge preview thumbnail from base + add-on embedded PNGs.
+
+    ``height`` is accepted as a deprecated alias for ``size`` (older call sites).
+    """
+    side = size if height is None else height
     base_png = _load_png(Path(base_path))
     addon_png = _load_png(Path(addon_path))
     if base_png and addon_png:
-        return compose_side_by_side_png(base_png, addon_png, height=height)
+        return compose_overlay_square_png(base_png, addon_png, size=side)
     return base_png or addon_png
 
 

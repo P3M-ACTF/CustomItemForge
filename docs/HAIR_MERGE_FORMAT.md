@@ -85,7 +85,15 @@ Implemented in `engines/hair/merge.py` + `engines/hair/operations.py`:
 | `basetransferable` store (`payload.f2`) | Append unique material/texture records |
 | `basetransferable` `payload.f5` | Append unique `f5.9` shared-material ids |
 | `basetransferable` `payload.f6` | Append unique **image blobs** by id (required for Studio) |
-| Transferable group / meta / thumbnail | Keep base group; compose merge thumbnail; copy non-colliding addon ZIP entries |
+| Transferable group / meta / thumbnail | Keep base group; **square overlay** merge thumbnail (512×512); copy non-colliding addon ZIP entries |
+
+### Merge thumbnail
+
+Studio’s custom-item grid expects a **square** preview (~512×512), matching preset exports.
+
+CustomItemForge builds `thumbnails/thumbnail.png` by **alpha-compositing** the base and add-on embedded PNGs onto a light 512×512 canvas (`compose_overlay_square_png`). A wide side-by-side collage (e.g. 1032×512) is cropped badly in Studio and must not be written.
+
+No 3D viewport / geometry decode: only the PNGs Studio already embedded in each item.
 
 Category / edit-type differences:
 

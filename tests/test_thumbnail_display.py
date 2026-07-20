@@ -78,3 +78,52 @@ def test_fallback_png_varies_by_family() -> None:
     assert hair.startswith(b"\x89PNG")
     assert clothing.startswith(b"\x89PNG")
     assert hair != clothing
+
+
+def _rgba_png(size: int, color: tuple[int, int, int, int], box: tuple[int, int, int, int]) -> bytes:
+    from PIL import Image
+
+    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    for x in range(box[0], box[2]):
+        for y in range(box[1], box[3]):
+            image.putpixel((x, y), color)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def test_compose_overlay_square_is_square_and_keeps_both_layers() -> None:
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from custom_item_forge.core.thumbnail_compose import compose_overlay_square_png
+
+    # Opaque red patch top-left, opaque blue patch bottom-right.
+    base = _rgba_png(128, (220, 40, 40, 255), (0, 0, 40, 40))
+    addon = _rgba_png(128, (40, 80, 220, 255), (88, 88, 128, 128))
+    merged = compose_overlay_square_png(base, addon, size=256)
+    image = Image.open(io.BytesIO(merged))
+    assert image.size == (256, 256)
+    assert image.mode == "RGBA"
+    # Sample near the painted regions after fit/centering on 256 canvas (1:1 scale of 128→centered).
+    # 128 fitted into 256 is centered with offset 64; patches map accordingly.
+    red = image.getpixel((64 + 10, 64 + 10))
+    blue = image.getpixel((64 + 100, 64 + 100))
+    assert red[0] > 180 and red[2] < 80
+    assert blue[2] > 180 and blue[0] < 80
+
+
+def test_compose_merge_thumbnail_writes_square_png(tmp_path: Path) -> None:
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from custom_item_forge.core.thumbnail_compose import compose_merge_thumbnail
+
+    base_thumb = _rgba_png(512, (10, 10, 10, 255), (20, 20, 80, 80))
+    addon_thumb = _rgba_png(512, (200, 200, 50, 255), (400, 400, 480, 480))
+    base = build_minimal_item(tmp_path / "base.vroidcustomitem", thumbnail_bytes=base_thumb)
+    addon = build_minimal_item(tmp_path / "addon.vroidcustomitem", thumbnail_bytes=addon_thumb)
+    composed = compose_merge_thumbnail(base, addon)
+    assert composed is not None
+    image = Image.open(io.BytesIO(composed))
+    assert image.size == (512, 512)
