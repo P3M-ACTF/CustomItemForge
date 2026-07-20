@@ -52,7 +52,7 @@ docs: clarify calibration sample layout
 
 ### Salir de alpha (más adelante)
 
-En [`release-please-config.json`](../../release-please-config.json), quita o pon `"prerelease": false` (y ajusta `prerelease-type` si aplica). Las siguientes releases dejarán de ser alpha/prerelease.
+En [`release-please-config.json`](../release-please-config.json), quita o pon `"prerelease": false` (y ajusta `prerelease-type` si aplica). Las siguientes releases dejarán de ser alpha/prerelease.
 
 ---
 

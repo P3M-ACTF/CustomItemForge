@@ -1,0 +1,20 @@
+---
+description: Convenciones de desarrollo y validación para código Python
+globs:
+  - "**/*.py"
+  - "pyproject.toml"
+alwaysApply: false
+---
+
+# Python
+
+- Respeta la versión mínima de Python definida por el proyecto.
+- Usa anotaciones de tipo en APIs públicas y en lógica donde mejoren la comprensión.
+- Prioriza nombres claros y funciones pequeñas frente a abstracciones prematuras.
+- Escribe docstrings para APIs públicas y para comportamiento no evidente; evita repetir el código en prosa.
+- Mantén separadas la lógica de dominio, la entrada/salida y la configuración cuando sea práctico.
+- Reutiliza el estilo de gestión de errores y logging que ya use el proyecto.
+- No captures `Exception` de forma genérica salvo en una frontera deliberada y documentada.
+- Añade o actualiza pruebas para correcciones y cambios de comportamiento.
+- Usa las herramientas configuradas por el proyecto. Si existen, ejecuta Ruff, el comprobador de tipos y pytest.
+- No afirmes que el código cumple PEP 8 o pasa pruebas sin haber ejecutado las comprobaciones correspondientes.

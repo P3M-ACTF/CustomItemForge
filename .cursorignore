@@ -1,0 +1,38 @@
+# This file reduces accidental AI context exposure and unnecessary indexing.
+# It is not a security boundary: secrets must never be committed.
+
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+secrets*.yaml
+secrets*.yml
+
+# Generated or dependency-heavy content
+.venv/
+venv/
+node_modules/
+build/
+dist/
+htmlcov/
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.min.js
+*.map
+
+# Binary and local data
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.tar
+*.gz

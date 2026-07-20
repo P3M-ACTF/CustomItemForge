@@ -1,9 +1,9 @@
 # CustomItemForge
 
-Part of [VRoidTools](../README.md).
-
 Tools to inspect and transform `.vroidcustomitem` files **for VRoid Studio**.  
 This project is independent from VRoid branding; compatibility is described as *for VRoid*.
+
+Part of the [VRoidTools](https://github.com/P3M-ACTF/VRoidTools) index.
 
 [English](README.md) · [Español](README_ES.md)
 
@@ -17,7 +17,7 @@ This project is independent from VRoid branding; compatibility is described as *
 
 ## Download (end users)
 
-1. Get the `.zip` from the [latest release](https://github.com/P3M-ACTF/VRoidTools/releases/latest) (`CustomItemForge-*.zip`).
+1. Get the `.zip` from the [latest release](https://github.com/P3M-ACTF/CustomItemForge/releases/latest) (`CustomItemForge-*.zip`).
 2. Extract it anywhere.
 3. Follow `RELEASE.txt` inside the zip.
 
@@ -37,8 +37,8 @@ On Windows, open the GUI with **`CustomItemForge_Win.pyw`** (not the `.pyz` — 
 ## Quick start (developers)
 
 ```powershell
-git clone https://github.com/P3M-ACTF/VRoidTools.git
-cd VRoidTools\CustomItemForge
+git clone https://github.com/P3M-ACTF/CustomItemForge.git
+cd CustomItemForge
 python -m pip install -e ".[dev]"
 custom-item-forge inspect path\to\item.vroidcustomitem
 custom-item-forge gui

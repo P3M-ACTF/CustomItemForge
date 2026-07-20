@@ -5,7 +5,6 @@ End-user artifacts are generated in the **CustomItemForge project root** (gitign
 ## Build
 
 ```powershell
-cd CustomItemForge
 python scripts/build_release.py
 # or
 .\scripts\build_release.ps1
@@ -42,11 +41,11 @@ Maintainer guide (release-please + zip):
 Short version:
 
 1. Merge conventional commits to `main` — **Release Please** opens/updates a Release PR.
-2. Merge that Release PR when you want an alpha — CI creates the tag/prerelease and uploads `dist/CustomItemForge-<label>.zip` (see [`.github/workflows/release-please.yml`](../../.github/workflows/release-please.yml)).
+2. Merge that Release PR when you want an alpha — CI creates the tag/prerelease and uploads `dist/CustomItemForge-<label>.zip` (see [`.github/workflows/release-please.yml`](../.github/workflows/release-please.yml)).
 3. To **rebuild** a zip later: Actions → **Release CustomItemForge** → **Run workflow** with the same tag.
 4. Users download that zip from the release page.
 
-Config: [`release-please-config.json`](../../release-please-config.json) (alphas via `prerelease` + `prerelease-type: alpha`).
+Config: [`release-please-config.json`](../release-please-config.json) (alphas via `prerelease` + `prerelease-type: alpha`).
 
 ### Windows GUI (no console)
 

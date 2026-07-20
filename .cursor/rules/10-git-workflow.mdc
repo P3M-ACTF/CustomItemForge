@@ -1,0 +1,23 @@
+---
+description: Flujo GitHub Flow, ramas, commits y Pull Requests
+globs:
+alwaysApply: true
+---
+
+# Flujo Git seguro
+
+- Antes de modificar el estado de Git, ejecuta `git status --short --branch`.
+- Nunca crees commits directamente en `main`.
+- Crea las ramas desde una `main` actualizada con `git pull --ff-only`.
+- Usa ramas `tipo/descripcion-corta` en minúsculas y kebab-case.
+- Tipos admitidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`, `build`, `style`, `hotfix` y `revert`.
+- Examina `git diff` antes de preparar archivos.
+- Prepara únicamente los archivos relacionados; no uses `git add .` de forma automática.
+- Revisa `git diff --cached` antes de crear el commit.
+- Usa Conventional Commits: `tipo(ámbito-opcional): descripción imperativa`.
+- Mantén cada commit atómico y separa cambios sin relación.
+- Ejecuta las comprobaciones documentadas por el proyecto antes del commit.
+- Si un hook falla, corrige la causa; nunca uses `--no-verify` para eludirlo.
+- Solo haz `push` cuando el usuario lo solicite explícitamente.
+- No uses `commit --amend`, rebase, force-push ni borres ramas sin autorización explícita.
+- Los Pull Requests deben explicar qué cambia, por qué cambia, cómo se validó y qué riesgos quedan.

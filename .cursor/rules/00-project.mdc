@@ -1,0 +1,32 @@
+---
+description: Reglas generales y no negociables del repositorio
+globs:
+alwaysApply: true
+---
+
+# Contexto del proyecto
+
+- Lee `README.md` y `CONTRIBUTING.md` antes de proponer cambios amplios.
+- Sigue las herramientas, comandos y patrones que ya existan en el repositorio.
+- Realiza el cambio mínimo que resuelva la petición; evita refactorizaciones no relacionadas.
+- Conserva los cambios del usuario y no reviertas trabajo ajeno sin autorización explícita.
+- No inventes resultados: indica exactamente qué comprobaciones has ejecutado y cuáles no.
+- Actualiza pruebas y documentación cuando cambie el comportamiento observable.
+- No añadas dependencias nuevas sin justificar su necesidad y comprobar alternativas existentes.
+- Nunca leas, muestres, confirmes ni subas secretos, credenciales o archivos de entorno.
+- Si una operación es destructiva, irreversible o afecta a producción, detente y solicita confirmación.
+
+# Comandos del producto
+
+```powershell
+python -m pip install -e ".[dev]"
+pytest
+python scripts/build_release.py --zip
+```
+
+Validación del workflow Cursor/GitHub:
+
+```powershell
+python -m unittest discover -s tools/workflow/tests -v
+pre-commit run --all-files
+```

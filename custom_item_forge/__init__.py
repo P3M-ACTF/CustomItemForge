@@ -17,4 +17,4 @@ __all__ = [
 ]
 
 __version__ = "0.1.1-alpha.0"
-REPO_URL = "https://github.com/P3M-ACTF/VRoidTools"
+REPO_URL = "https://github.com/P3M-ACTF/CustomItemForge"

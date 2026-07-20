@@ -1,0 +1,64 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Resolve release tag
+        id: meta
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          if [ -z "$TAG" ]; then
+            echo "Release created but tag_name is empty" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG"
+
+      - name: Checkout release tag
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+
+      - name: Set up Python
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and pack release zip
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+        run: python scripts/build_release.py --zip --tag "$RELEASE_TAG"
+
+      - name: Upload zip to GitHub Release
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          LABEL="${RELEASE_TAG#v}"
+          ASSET="dist/CustomItemForge-${LABEL}.zip"
+          ls -lh "$ASSET"
+          gh release view "$RELEASE_TAG" >/dev/null
+          gh release upload "$RELEASE_TAG" "$ASSET" --clobber

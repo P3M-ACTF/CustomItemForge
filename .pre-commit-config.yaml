@@ -1,0 +1,50 @@
+minimum_pre_commit_version: "4.6.0"
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+  - pre-push
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args:
+          - --fix=lf
+      - id: check-added-large-files
+        args:
+          - --maxkb=1024
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: 205e71c26d6dd6a802ca674c9ae4d12f1103a9bb  # v4.16.4
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+
+  - repo: local
+    hooks:
+      - id: branch-policy
+        name: validate branch policy
+        entry: python tools/workflow/check_branch.py
+        language: python
+        pass_filenames: false
+        always_run: true
+        stages:
+          - pre-commit
+        args:
+          - --protected
+          - main
+          - --pattern
+          - "^(feat|fix|docs|refactor|test|chore|perf|ci|build|style|hotfix|revert)/[a-z0-9]+(?:-[a-z0-9]+)*$"
+          - --pattern
+          - "^dependabot/.+$"
+          - --pattern
+          - "^renovate/.+$"

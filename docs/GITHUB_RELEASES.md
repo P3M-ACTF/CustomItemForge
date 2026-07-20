@@ -38,7 +38,7 @@ docs: clarify calibration sample layout
 
 ### Leaving alpha later
 
-In [`release-please-config.json`](../../release-please-config.json), set `"prerelease": false` (and drop `prerelease-type` if needed). Later releases will no longer be alpha/prerelease.
+In [`release-please-config.json`](../release-please-config.json), set `"prerelease": false` (and drop `prerelease-type` if needed). Later releases will no longer be alpha/prerelease.
 
 ---
 
