@@ -58,7 +58,7 @@ En [`release-please-config.json`](../release-please-config.json), quita o pon `"
 
 ## Regenerar el zip de una release que ya existe
 
-Workflow: **Release CustomItemForge**  
+Workflow: **Release CustomItemForge**
 Archivo: `.github/workflows/release-custom-item-forge.yml`
 
 ### Opción A — Re-run

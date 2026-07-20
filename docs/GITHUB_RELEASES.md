@@ -44,7 +44,7 @@ In [`release-please-config.json`](../release-please-config.json), set `"prerelea
 
 ## Rebuild the zip for an existing release
 
-Workflow: **Release CustomItemForge**  
+Workflow: **Release CustomItemForge**
 File: `.github/workflows/release-custom-item-forge.yml`
 
 - **Re-run** the run that uploaded the zip, or

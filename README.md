@@ -1,6 +1,6 @@
 # CustomItemForge
 
-Tools to inspect and transform `.vroidcustomitem` files **for VRoid Studio**.  
+Tools to inspect and transform `.vroidcustomitem` files **for VRoid Studio**.
 This project is independent from VRoid branding; compatibility is described as *for VRoid*.
 
 Part of the [VRoidTools](https://github.com/P3M-ACTF/VRoidTools) index.
