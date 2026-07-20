@@ -95,6 +95,8 @@ CustomItemForge builds `thumbnails/thumbnail.png` by **alpha-compositing** the b
 
 Studio thumbnails are usually **fully opaque** with a light fill (`~#F5F5F5`), not true transparency. Before overlay, near-white pixels are knocked out so the add-on layer does not erase the base subject.
 
+The combined pixels are then **reframed**: crop to visible content, scale down to ~82% of the canvas, and center. This matches compact Studio exports (e.g. centered Extra items) and avoids wide edge strips that look zoomed-in in the Custom grid.
+
 No 3D viewport / geometry decode: only the PNGs Studio already embedded in each item.
 
 Category / edit-type differences:

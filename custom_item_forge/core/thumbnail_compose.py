@@ -41,14 +41,48 @@ def _knockout_studio_background(image):
     return rgba
 
 
-def _fit_centered(image, size: int):
+def _subject_bbox(image) -> tuple[int, int, int, int] | None:
+    pixels = image.load()
+    width, height = image.size
+    xs: list[int] = []
+    ys: list[int] = []
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y][3] > 20:
+                xs.append(x)
+                ys.append(y)
+    if not xs:
+        return None
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _reframe_subject_square(image, *, size: int, padding_ratio: float = 0.12, fill_ratio: float = 0.82):
+    """Crop to visible content, scale to fit inside the square with Studio-like padding."""
     from PIL import Image
 
-    fitted = image.copy()
-    fitted.thumbnail((size, size), Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    offset = ((size - fitted.width) // 2, (size - fitted.height) // 2)
-    canvas.paste(fitted, offset, fitted)
+    side = max(64, size)
+    bbox = _subject_bbox(image)
+    if bbox is None:
+        return Image.new("RGBA", (side, side), _CANVAS_BG)
+    x0, y0, x1, y1 = bbox
+    content_w = x1 - x0 + 1
+    content_h = y1 - y0 + 1
+    pad = max(8, int(max(content_w, content_h) * padding_ratio))
+    left = max(0, x0 - pad)
+    top = max(0, y0 - pad)
+    right = min(image.width, x1 + pad + 1)
+    bottom = min(image.height, y1 + pad + 1)
+    cropped = image.crop((left, top, right, bottom))
+    crop_w = right - left
+    crop_h = bottom - top
+    target = max(1, int(side * fill_ratio))
+    scale = min(target / crop_w, target / crop_h, 1.0)
+    new_w = max(1, int(crop_w * scale))
+    new_h = max(1, int(crop_h * scale))
+    resized = cropped.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (side, side), _CANVAS_BG)
+    offset = ((side - new_w) // 2, (side - new_h) // 2)
+    canvas.paste(resized, offset, resized)
     return canvas
 
 
@@ -62,16 +96,19 @@ def compose_overlay_square_png(
 
     Studio custom-item thumbnails are typically opaque with a light gray/white
     fill. Those fills are knocked out before compositing so the add-on does not
-    paint over the base subject.
+    paint over the base subject. The combined layer is then reframed to fit the
+    visible content with padding (Studio-style), avoiding edge-only strips that
+    look zoomed-in inside the Custom grid.
     """
     from PIL import Image
 
     side = max(64, size)
     base_img = _knockout_studio_background(Image.open(io.BytesIO(base)))
     addon_img = _knockout_studio_background(Image.open(io.BytesIO(addon)))
-    canvas = Image.new("RGBA", (side, side), _CANVAS_BG)
-    canvas.alpha_composite(_fit_centered(base_img, side))
-    canvas.alpha_composite(_fit_centered(addon_img, side))
+    layer = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    layer.alpha_composite(base_img)
+    layer.alpha_composite(addon_img)
+    canvas = _reframe_subject_square(layer, size=side)
     buffer = io.BytesIO()
     canvas.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()

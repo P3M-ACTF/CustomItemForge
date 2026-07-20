@@ -133,10 +133,48 @@ def test_compose_overlay_knockouts_opaque_studio_background() -> None:
     addon = opaque_subject(128, (180, 100, 40), (98, 40, 128, 80))
     merged = compose_overlay_square_png(base, addon, size=128)
     image = Image.open(io.BytesIO(merged))
-    left = image.getpixel((10, 60))
-    right = image.getpixel((110, 60))
-    assert left[0] < 50 and left[1] < 50  # base dark subject survives
-    assert right[0] > 150 and right[2] < 80  # addon brown subject survives
+    has_dark = any(
+        image.getpixel((x, y))[0] < 50 and image.getpixel((x, y))[1] < 50
+        for y in range(image.height)
+        for x in range(image.width)
+    )
+    has_brown = any(
+        image.getpixel((x, y))[0] > 150 and image.getpixel((x, y))[2] < 80
+        for y in range(image.height)
+        for x in range(image.width)
+    )
+    assert has_dark
+    assert has_brown
+
+
+def test_compose_overlay_reframes_wide_subjects(tmp_path: Path) -> None:
+    """Edge-to-edge strips should be reframed with padding, not left full-width."""
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from custom_item_forge.core.thumbnail_compose import compose_overlay_square_png
+
+    def strip_thumb(y0: int, y1: int, color: tuple[int, int, int]) -> bytes:
+        image = Image.new("RGBA", (512, 512), (245, 245, 245, 255))
+        for x in range(0, 512, 64):
+            for y in range(y0, y1):
+                image.putpixel((x, y), (*color, 255))
+                image.putpixel((511 - x, y), (*color, 255))
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+
+    merged = compose_overlay_square_png(
+        strip_thumb(200, 240, (20, 20, 20)),
+        strip_thumb(260, 320, (160, 90, 40)),
+        size=512,
+    )
+    image = Image.open(io.BytesIO(merged))
+    assert image.size == (512, 512)
+    # Subject should not span the full width after reframe (was ~512px wide before).
+    xs = [x for y in range(512) for x in range(512) if image.getpixel((x, y))[3] > 20 and image.getpixel((x, y))[:3] != (245, 245, 245)]
+    assert xs
+    assert max(xs) - min(xs) < 450
 
 
 def test_compose_merge_thumbnail_writes_square_png(tmp_path: Path) -> None:
